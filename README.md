@@ -4,11 +4,13 @@
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-[![Uses Google Gemini](https://img.shields.io/badge/Uses-Google_Gemini-blue.svg)](https://ai.google.dev/)
+[![Google Gemini](https://img.shields.io/badge/-Google_Gemini-blue?logo=google&logoColor=white)](https://ai.google.dev/)
 
-[![Uses Google Geocoding](https://img.shields.io/badge/Uses-Google_Geocoding-blue.svg)](https://developers.google.com/maps/documentation/geocoding)
+[![Google Geocoding](https://img.shields.io/badge/-Google_Geocoding-blue?logo=googlemaps&logoColor=white)](https://developers.google.com/maps/documentation/geocoding)
 
-[![Uses ViaCEP](https://img.shields.io/badge/Uses-ViaCEP-blue.svg)](https://viacep.com.br/)
+[![ViaCEP](https://img.shields.io/badge/-ViaCEP-blue.svg)](https://viacep.com.br/)
+
+[![Python 3.9](https://img.shields.io/badge/python-3.x-blue?logo=python&logoColor=white)](https://www.python.org/)
 
 ## Sobre o Projeto
 
