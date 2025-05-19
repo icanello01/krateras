@@ -123,7 +123,7 @@ Sinta-se à vontade para abrir issues para sugestões ou reportar bugs, ou envia
 
 ## Autor
 
-![Issame Canello](https://img.shields.io/badge/-Issame_Canello-24292E?style=flat-square&logo=github&logoColor=white)  [![Meu GitHub](https://img.shields.io/badge/-GitHub-181717?logo=github&logoColor=white)](https://github.com/icanello01)  [![Meu LinkedIn](https://img.shields.io/badge/-LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/issame-canello-006a2433b/)
+[![Issame Canello](https://img.shields.io/badge/-Issame_Canello-24292E.svg)](#)  [![Meu GitHub](https://img.shields.io/badge/-GitHub-181717?logo=github&logoColor=white)](https://github.com/icanello01)  [![Meu LinkedIn](https://img.shields.io/badge/-LinkedIn-0A66C2?logo=linkedin&logoColor=white)](https://www.linkedin.com/in/issame-canello-006a2433b/)
 
 ---
 
