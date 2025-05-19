@@ -111,11 +111,6 @@ O script instalará automaticamente as bibliotecas Python necessárias (`request
 
 Sinta-se à vontade para abrir issues para sugestões ou reportar bugs, ou enviar Pull Requests com melhorias. Toda contribuição é bem-vinda!
 
-## Licença
-
-Este projeto está licenciado sob a [Licença MIT](LICENSE) - veja o arquivo [LICENSE](LICENSE) para detalhes.
-*(Nota: Os links acima direcionam automaticamente para o arquivo 'LICENSE' na raiz deste repositório quando visualizados no GitHub. Certifique-se de que este arquivo exista.)*
-
 ## Autor
 
 [Issame Canello / [GitHub](https://github.com/icanello01) / [LinkedIn](https://www.linkedin.com/in/issame-canello-006a2433b)
