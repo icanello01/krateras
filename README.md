@@ -2,6 +2,8 @@
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1MHVfh8aR8VeZwbV2wJfufL2ZNX9Hu1wb?usp=sharing)
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 ## Sobre o Projeto
 
 Krateras (Cratera em grego antigo) é um projeto ambicioso e inteligente desenvolvido em Python para automatizar e aprimorar o processo de denúncia de buracos em ruas e vias públicas. Utilizando o poder da Inteligência Artificial (Google Gemini) e APIs de geolocalização (Google Maps Geocoding) e dados públicos (ViaCEP), Krateras transforma uma reclamação comum em um relatório técnico e priorizado, pronto para ser encaminhado às autoridades competentes.
