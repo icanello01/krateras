@@ -1,3 +1,4 @@
+```python
 # -*- coding: utf-8 -*-
 """
 Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v3.2 - Streamlit Interphase Edition Refined)
@@ -555,7 +556,7 @@ def analisar_dados_com_gemini(_dados_buraco: Dict[str, Any], _image_analysis_ia:
              'identificadores_visuais': 'Identificadores Visuais Adicionais',
          }.get(key, key) # Usa a chave original se não houver tradução
 
-         # Só adiciona ao texto se o valor não for o padrão "Não Informado" ou vazio (para texto livre)
+         # Só adiciona ao texto se o valor não for o padrão "Não Informado" ou vazio (para texto libre)
          if value and value != 'Não Informado':
              structured_text += f"- {key_translated}: {value_str}\n"
          elif isinstance(value, list) and value:
@@ -1482,4 +1483,217 @@ elif st.session_state.step == 'show_report':
     buraco = dados_completos.get('buraco', {})
     endereco = buraco.get('endereco', {})
     structured_details = buraco.get('structured_details', {})
-    observacoes_adicionais = buraco.get('observacoes_adicional
+    observacoes_adicionais = buraco.get('observacoes_adicionais', 'Nenhuma observação adicional fornecida.')
+    localizacao_exata = dados_completos.get('localizacao_exata_processada', {})
+
+    image_analysis_ia = dados_completos.get('image_analysis_ia', {})
+    insights_ia = dados_completos.get('insights_ia', {})
+    urgencia_ia = dados_completos.get('urgencia_ia', {})
+    sugestao_acao_ia = dados_completos.get('sugestao_acao_ia', {})
+    resumo_ia = dados_completos.get('resumo_ia', {})
+    streetview_image_data = dados_completos.get('streetview_image_data', {}) # Dados da imagem Street View
+
+    st.markdown("---")
+
+    # Exibir todas as etapas em expanders abertos por padrão
+    with st.expander("👤 Dados do Denunciante", expanded=True):
+        st.write(f"**Nome:** {denunciante.get('nome', 'Não informado')}")
+        st.write(f"**Idade:** {denunciante.get('idade', 'Não informado')}")
+        st.write(f"**Cidade de Residência:** {denunciante.get('cidade_residencia', 'Não informada')}")
+
+    with st.expander("🚧 Dados do Buraco Coletados", expanded=True):
+        st.subheader("Endereço Base")
+        st.write(f"**Rua:** {endereco.get('rua', 'Não informada')}")
+        if buraco.get('numero_proximo'):
+            st.write(f"**Referência/Número Próximo:** {buraco.get('numero_proximo')}")
+        if endereco.get('bairro'):
+            st.write(f"**Bairro:** {endereco.get('bairro')}")
+        if endereco.get('cidade_buraco'):
+             st.write(f"**Cidade do Buraco:** {endereco.get('cidade_buraco')}")
+        if endereco.get('estado_buraco'):
+            st.write(f"**Estado do Buraco:** {endereco.get('estado_buraco')}")
+        if buraco.get('cep_informado'):
+            st.write(f"**CEP Informado:** {buraco.get('cep_informado')}")
+        st.write(f"**Lado da Rua:** {buraco.get('lado_rua', 'Não informado')}")
+
+        st.subheader("Detalhes Estruturados Preenchidos")
+        if structured_details:
+            # Filtrar os detalhes que não foram informados para não poluir o relatório
+            informed_details = {k: v for k, v in structured_details.items() if v and (not isinstance(v, list) or v)}
+            if informed_details:
+                 # Exibir os detalhes informados de forma limpa
+                 for key, value in informed_details.items():
+                      key_translated = {
+                         'tamanho': 'Tamanho Estimado',
+                         'perigo': 'Nível de Perigo',
+                         'profundidade': 'Profundidade Estimada',
+                         'presenca_agua': 'Presença de Água/Alagamento',
+                         'contexto': 'Contexto ou Histórico',
+                         'perigos_detalhados': 'Perigos e Impactos Detalhados',
+                         'identificadores_visuais': 'Identificadores Visuais Adicionais',
+                      }.get(key, key)
+                      value_str = ", ".join(value) if isinstance(value, list) else value
+                      st.write(f"**{key_translated}:** {value_str}")
+            else:
+                 st.info("Nenhum detalhe estruturado foi informado.")
+        else:
+            st.info("Detalhes estruturados não foram coletados.")
+
+        st.subheader("Observações Adicionais (Texto Libre)")
+        st.info(observacoes_adicionais if observacoes_adicionais else "Nenhuma observação adicional fornecida.")
+
+        st.subheader("Foto Anexada pelo Usuário")
+        if st.session_state.get('uploaded_image'):
+             try:
+                 # Display image from bytes
+                 img_display = Image.open(io.BytesIO(st.session_state.uploaded_image))
+                 st.image(img_display, caption="Foto do buraco anexada.", use_column_width=True)
+             except Exception as e:
+                  st.warning(f"⚠️ Não foi possível exibir a imagem anexada. Erro: {e}")
+        else:
+            st.info("Nenhuma foto foi anexada a esta denúncia pelo usuário.")
+
+
+    with st.expander("📍 Localização Exata Processada e Visualizações", expanded=True):
+        tipo_loc = localizacao_exata.get('tipo', 'Não informada')
+        st.write(f"**Tipo de Coleta/Processamento:** {tipo_loc}")
+
+        lat = localizacao_exata.get('latitude')
+        lon = localizacao_exata.get('longitude')
+
+        if lat is not None and lon is not None:
+             st.write(f"**Coordenadas:** `{lat}, {lon}`")
+
+             # --- Visualização Street View ---
+             st.subheader("Visualização Google Street View Estática")
+             if 'image_bytes' in streetview_image_data:
+                  try:
+                       # Display Street View image from bytes
+                       st.image(streetview_image_data['image_bytes'], caption="Imagem Google Street View.", use_column_width=True)
+                       st.info("✅ Imagem Street View obtida com sucesso.")
+                  except Exception as e:
+                       st.error(f"❌ Erro ao exibir a imagem Street View: {e}")
+             elif 'erro' in streetview_image_data:
+                  st.warning(f"⚠️ Falha ao obter imagem Street View: {streetview_image_data['erro']}")
+             else:
+                  st.info("ℹ️ Tentativa de obter imagem Street View não realizada ou sem resultado.")
+
+             # --- Visualização no Mapa OpenStreetMap ---
+             st.subheader("Visualização no Mapa (OpenStreetMap/MapLibre)")
+             try:
+                 # Tenta usar st.map se coordenadas válidas (Não precisa de chave Google)
+                 map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
+                 st.map(map_data, zoom=18, use_container_width=True)
+                 st.info("ℹ️ O mapa acima é uma representação aproximada usando MapLibre/OpenStreetMap.")
+             except Exception as map_error:
+                 st.error(f"❌ Erro ao gerar visualização do mapa OpenStreetMap/MapLibre: {map_error}")
+
+             # --- Visualização no Google Maps Embed ---
+             st.subheader("Visualização no Google Maps (Embed)")
+             embed_link = localizacao_exata.get('google_embed_link_gerado')
+             if embed_link:
+                 try:
+                     st.components.v1.html(
+                         f'<iframe width="100%" height="450" frameborder="0" style="border:0" src="{embed_link}" allowfullscreen></iframe>',
+                         height=470,
+                         scrolling=False
+                     )
+                     st.info("✅ Visualização do Google Maps Embed carregada (requer API habilitada e autorizada).")
+                 except Exception as embed_error:
+                      st.error(f"❌ Erro ao carregar visualização do Google Maps Embed: {embed_error}")
+                      st.warning("⚠️ A visualização do Google Maps Embed requer que a 'Maps Embed API' esteja habilitada e autorizada para sua chave de API Geocoding no Google Cloud.")
+             elif st.session_state.geocoding_api_key:
+                  st.warning("⚠️ Chave de API Geocoding fornecida, mas não foi possível gerar o link Google Maps Embed ou carregá-lo. Verifique se a 'Maps Embed API' está habilitada e autorizada para sua chave no Google Cloud.")
+             else:
+                  st.warning("⚠️ Chave de API Geocoding não fornecida. Visualização Google Maps Embed não disponível.")
+
+
+             link_maps = localizacao_exata.get('google_maps_link_gerado')
+             if link_maps:
+                 st.write(f"**Link Direto Google Maps:** [Abrir no Google Maps]({link_maps})")
+
+             if localizacao_exata.get('endereco_formatado_api'):
+                  st.write(f"**Endereço Formatado (API):** {localizacao_exata.get('endereco_formatado_api')}")
+             if localizacao_exata.get('input_original') and tipo_loc != 'Descrição Manual Detalhada':
+                  st.write(f"(Input Original para Localização Exata: `{localizacao_exata.get('input_original', 'Não informado')}`)")
+
+
+        elif tipo_loc == 'Descrição Manual Detalhada':
+            st.write(f"**Descrição Manual da Localização:**")
+            st.info(localizacao_exata.get('descricao_manual', 'Não informada'))
+            if localizacao_exata.get('input_original'):
+                st.write(f"(Input Original: `{localizacao_exata.get('input_original', 'Não informado')}`)")
+
+        else:
+            st.warning("Localização exata não coletada de forma estruturada (coordenadas/link/descrição manual detalhada).")
+
+        # Inclui motivo da falha na geocodificação se aplicável
+        if localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
+             st.info(f"ℹ️ Nota: Não foi possível obter a localização exata via Geocodificação automática. Motivo: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')}")
+
+    st.markdown("---")
+
+    # Exibir análises de IA (se os modelos estavam disponíveis)
+    if st.session_state.gemini_pro_model or st.session_state.gemini_vision_model:
+
+        with st.expander("🧠 Análise de Imagem (IA Gemini Vision)", expanded=True):
+             st.write(image_analysis_ia.get('image_analysis', 'Análise não realizada, sem imagem ou com erro.'))
+             if st.session_state.gemini_vision_model is None:
+                  st.info("ℹ️ Motor Gemini Vision indisponível.")
+
+        with st.expander("🧠 Análise Detalhada Consolidada (IA Gemini Texto)", expanded=True):
+            st.write(insights_ia.get('insights', 'Análise não realizada ou com erro.'))
+            if st.session_state.gemini_pro_model is None:
+                 st.info("ℹ️ Motor Gemini Texto indisponível.")
+
+
+        with st.expander("🚦 Sugestão de Urgência (IA Gemini Texto)", expanded=True):
+            st.write(urgencia_ia.get('urgencia_ia', 'Sugestão de urgência não gerada ou com erro.'))
+            if st.session_state.gemini_pro_model is None:
+                 st.info("ℹ️ Motor Gemini Texto indisponível.")
+
+
+        with st.expander("🛠️ Sugestões de Causa e Ação (IA Gemini Texto)", expanded=True):
+            st.write(sugestao_acao_ia.get('sugestao_acao_ia', 'Sugestões não geradas ou com erro.'))
+            if st.session_state.gemini_pro_model is None:
+                 st.info("ℹ️ Motor Gemini Texto indisponível.")
+
+        st.markdown("---")
+        st.subheader("📜 Resumo Narrativo Inteligente (IA Gemini Texto)")
+        st.write(resumo_ia.get('resumo_ia', 'Resumo não gerado ou com erro.'))
+        if st.session_state.gemini_pro_model is None:
+             st.info("ℹ️ Motor Gemini Texto indisponível.")
+
+
+    else:
+        st.warning("⚠️ Análises e Resumo da IA não disponíveis (Chaves Gemini não configuradas ou modelos indisponíveis).")
+
+
+    st.markdown("---")
+    st.write("Esperamos que este relatório ajude a consertar o buraco!")
+
+    # Opção para reiniciar o processo
+    if st.button("Iniciar Nova Denúncia", key='new_denuncia_button'):
+        # Limpa o estado da sessão para recomeçar
+        for key in st.session_state.keys():
+            # Mantém as chaves de API e modelos cacheada, pois não mudam por sessão do app
+            if key not in ['geocoding_api_key', 'gemini_pro_model', 'gemini_vision_model', 'api_keys_loaded']:
+                 del st.session_state[key]
+        st.rerun()
+
+    # Opção para exibir dados brutos (útil para debug ou exportação)
+    with st.expander("🔌 Ver Dados Brutos da Denúncia (JSON)"):
+        # Remover bytes da imagem do Street View e do upload para evitar erros de serialização JSON
+        dados_para_json = dados_completos.copy()
+        if 'streetview_image_data' in dados_para_json and 'image_bytes' in dados_para_json['streetview_image_data']:
+             # Cria uma cópia do dicionário streetview_image_data removendo a chave 'image_bytes'
+             streetview_data_clean = dados_para_json['streetview_image_data'].copy()
+             del streetview_data_clean['image_bytes']
+             dados_para_json['streetview_image_data'] = streetview_data_clean
+             dados_para_json['streetview_image_data']['note'] = "image_bytes_removed_for_json_view"
+
+
+        if 'uploaded_image' in dados_para_json and dados_para_json['uploaded_image'] is not None:
+             dados_para_json['uploaded_image'] = "image_bytes_removed_for_json_view"
+
+        st.json(dados_para_json)
