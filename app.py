@@ -1,4 +1,3 @@
-```python
 # -*- coding: utf-8 -*-
 """
 Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v3.2 - Streamlit Interphase Edition Refined)
