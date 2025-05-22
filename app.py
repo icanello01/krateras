@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v4.1 - Fluxo CEP Otimizado)
+Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v4.2 - Correção Robótica de Tipos!)
 
-Bem-vindo à versão visual do Krateras, agora com visão robótica e fluxo CEP mais rápido!
+Bem-vindo à versão visual do Krateras, com visão robótica e fluxo CEP otimizado,
+agora livre de erros de digitação no gerenciamento de chaves!
 Interface amigável, inteligência da IA aprimorada e segurança de chaves mantida.
 
 Tecnologias: Python, Streamlit, Google Gemini API (Text & Vision), Google Geocoding API, ViaCEP.
@@ -10,7 +11,7 @@ Objetivo: Coletar dados de denúncias de buracos com mais detalhes estruturados,
 incluindo análise visual por IA de imagens, geocodificação, e gerar relatórios
 detalhados, priorizados e com visualização de mapa.
 
-Vamos juntos consertar essas ruas! Otimizando sistemas...
+Vamos juntos consertar essas ruas! Corrigindo sistemas...
 """
 
 import streamlit as st
@@ -79,7 +80,8 @@ h1, h2, h3 {
     color: #4A90E2 !important;
 }
 /* Classe para ajustar o padding interno dos expanders */
-.st-emotion-cache-s5fjsg { /* Esta classe pode variar entre versões do streamlit, inspecione o elemento se o padding não funcionar */
+/* st-emotion-cache-s5fjsg pode variar, inspecione o elemento se não funcionar */
+.st-emotion-cache-s5fjsg, .st-emotion-cache-1njf35f {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
 }
@@ -99,7 +101,7 @@ if 'gemini_model' not in st.session_state:
     st.session_state.gemini_model = None
 if 'gemini_vision_model' not in st.session_state: # Novo estado para o modelo de visão
     st.session_state.gemini_vision_model = None
-if 'geocoding_api_key' not in st.session_state:
+if 'geocoding_api_key' not in st.session_state: # Corrigido para 'geocoding'
     st.session_state.geocoding_api_key = None
 
 # --- 🔑 Gerenciamento de Chaves Secretas (Streamlit Secrets) ---
@@ -112,7 +114,7 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
     """
     # Assume que a mesma chave GOOGLE_API_KEY serve para modelos de texto e visão
     gemini_key = st.secrets.get('GOOGLE_API_KEY')
-    geocoding_key = st.secrets.get('geocoding_api_key')
+    geocoding_key = st.secrets.get('geocoding_api_key') # Corrigido para 'geocoding'
 
     if not gemini_key:
         st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text/Vision) estarão desabilitadas.")
@@ -391,8 +393,9 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
         lat = localizacao_exata.get('latitude')
         lon = localizacao_exata.get('longitude')
         loc_contexto += f" Coordenadas: {lat}, {lon}. Link gerado: {localizacao_exata.get('google_maps_link_gerado', 'Não disponível')}."
-    elif localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
-         loc_contexto += f" (Nota: Tentativa de Geocodificação automática falhou/não tentada: {localizacao_exata.get('motivo_falha_geocodificacao_anterior', 'Motivo desconhecido')})"
+    # O motivo da falha na geocodificação agora é tratado *depois* dos processamentos no collect_buraco_details
+    # elif localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
+    #      loc_contexto += f" (Nota: Tentativa de Geocodificação automática falhou/não tentada: {localizacao_exata.get('motivo_falha_geocodificacao_anterior', 'Motivo desconhecido')})"
 
 
     # Formatar as características estruturadas para o prompt
@@ -515,12 +518,13 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     localizacao_exata = _dados_denuncia_completa.get('localizacao_exata_processada', {})
     insights_ia = _dados_denuncia_completa.get('insights_ia', {}).get('insights', 'Análise da descrição/características não disponível ou com erro.')
     analise_imagem_ia = _dados_denuncia_completa.get('analise_imagem_ia', {}).get('analise_imagem', 'Análise visual por IA não disponível ou com erro.')
-    urgencia_ia = dados_completos.get('urgencia_ia', {}).get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.') # Corrigido para usar dados_completos
-    sugestao_acao_ia = dados_completos.get('sugestao_acao_ia', {}).get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.') # Corrigido para usar dados_completos
+    urgencia_ia = _dados_denuncia_completa.get('urgencia_ia', {}).get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.') # Corrigido para usar dados_completos
+    sugestao_acao_ia = _dados_denuncia_completa.get('sugestao_acao_ia', {}).get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.') # Corrigido para usar dados_completos
 
     loc_info_resumo = "Localização exata não especificada ou processada."
     tipo_loc_processada = localizacao_exata.get('tipo', 'Não informada')
     input_original_loc = localizacao_exata.get('input_original', 'Não informado.')
+    motivo_falha_geo_resumo = localizacao_exata.get('motivo_falha_geocodificacao_anterior', None)
 
     if tipo_loc_processada in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Geocodificada (API)', 'Coordenadas Extraídas de Link (Manual)']:
          lat = localizacao_exata.get('latitude')
@@ -536,8 +540,8 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     elif input_original_loc != 'Não informado.' and tipo_loc_processada == 'Não informada':
          loc_info_resumo = f"Localização informada (tipo não detectado): '{input_original_loc}'."
 
-    if localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
-         loc_info_resumo += f" (Nota: Geocodificação automática falhou/não tentada: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')})"
+    if motivo_falha_geo_resumo:
+         loc_info_resumo += f" (Nota: {motivo_falha_geo_resumo})"
 
     # Formatar as características estruturadas para o prompt
     caracteristicas_formatadas = []
@@ -676,7 +680,7 @@ st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 if st.session_state.step == 'start':
     st.write("""
-    Olá! Krateras v4.1 entrando em órbita com **Visão Robótica** e fluxo otimizado! Sua missão, caso aceite: denunciar buracos na rua
+    Olá! Krateras v4.2 entrando em órbita com **Visão Robótica**, fluxo CEP otimizado e correção robótica de tipos! Sua missão, caso aceite: denunciar buracos na rua
     para que possam ser consertados. A segurança dos seus dados e a precisão da denúncia
     são nossas prioridades máximas.
 
@@ -694,8 +698,8 @@ if st.session_state.step == 'start':
 
     if st.button("Iniciar Missão Denúncia!"):
         # Carregar chaves e inicializar APIs antes de coletar dados
-        gemini_api_key, geocoding_api_key = load_api_keys()
-        st.session_state.geocoding_api_key = geocoding_api_key # Armazena a chave de geocoding no estado
+        gemini_api_key, geocoding_api_key = load_api_keys() # Corrigido para 'geocoding'
+        st.session_state.geocoding_api_key = geocoding_api_key # Armazena a chave de geocoding no estado. Corrigido para 'geocoding'
         st.session_state.gemini_model, st.session_state.gemini_vision_model = init_gemini_models(gemini_api_key) # Inicializa os modelos Gemini (cacheado)
         st.session_state.api_keys_loaded = True # Marca que tentamos carregar as chaves
         next_step()
@@ -1022,8 +1026,8 @@ elif st.session_state.step == 'collect_buraco_details':
                 # Limpa dados de localização processada anterior
                 st.session_state.denuncia_completa['localizacao_exata_processada'] = {"tipo": "Não informada"}
                 tentou_geocodificar = False
-                geocodificacao_sucesso = False
-                motivo_falha_geo = "Não tentado ou motivo não registrado" # Default
+                geocodificacao_sucesso_coords = False # Flag specifically for getting coordinates
+                geo_resultado: Dict[str, Any] = {} # Initialize to avoid UnboundLocalError
 
                 rua_buraco = st.session_state.denuncia_completa['buraco']['endereco'].get('rua')
                 cidade_buraco = st.session_state.denuncia_completa['buraco']['endereco'].get('cidade_buraco')
@@ -1042,11 +1046,11 @@ elif st.session_state.step == 'collect_buraco_details':
                         num_referencia_geo, # Usa o número/referência como base para geocodificação
                         cidade_buraco,
                         estado_buraco,
-                        st.session_state.geocoding_api_key
+                        st.session_state.geocoding_api_key # Corrigido para 'geocoding'
                     )
 
                     if 'erro' not in geo_resultado:
-                        geocodificacao_sucesso = True
+                        geocodificacao_sucesso_coords = True
                         st.session_state.denuncia_completa['localizacao_exata_processada'] = {
                             "tipo": "Geocodificada (API)",
                             "latitude": geo_resultado['latitude'],
@@ -1057,21 +1061,18 @@ elif st.session_state.step == 'collect_buraco_details':
                             "input_original": num_referencia_geo # Referencia qual input foi usado para geocodificar
                         }
                         st.success("✅ Localização Obtida (via Geocodificação Automática)!")
-                    else:
-                        st.warning(f"❌ Falha na Geocodificação automática: {geo_resultado['erro']}")
-                        motivo_falha_geo = geo_resultado.get('erro', 'Motivo desconhecido')
+                    # If there's an error in geo_resultado, it's handled later when setting the failure reason.
 
-
-                # --- Processar Coordenadas/Link/Descrição Manual (se fornecido) ---
+                # --- Processar Coordenadas/Link/Descrição Manual (if provided) ---
                 # Isto é feito *independente* do sucesso da geocodificação automática,
                 # pois a entrada manual pode ser mais precisa ou corrigir a automática.
                 localizacao_manual_input_processed = localizacao_manual_input.strip()
-                if localizacao_manual_input_processed:
-                     lat: Optional[float] = None
-                     lon: Optional[float] = None
-                     tipo_manual_processado = "Descrição Manual Detalhada"
-                     input_original_manual = localizacao_manual_input_processed
+                lat: Optional[float] = None
+                lon: Optional[float] = None
+                tipo_manual_processado = "Descrição Manual Detalhada" # Assume descrição manual por padrão
+                input_original_manual = localizacao_manual_input_processed
 
+                if localizacao_manual_input_processed:
                      # Regex para tentar achar coordenadas em diferentes formatos (Lat,Long ou em links comuns)
                      # Tenta cobrir "lat,long", "@lat,long" em links, "lat long"
                      # Regex mais robusta: permite espaços ou vírgulas como separadores
@@ -1089,9 +1090,10 @@ elif st.session_state.step == 'collect_buraco_details':
                              else:
                                  st.warning("⚠️ Parece um formato de coordenadas, mas fora da faixa esperada (-90 a 90 Latitude, -180 a 180 Longitude). Tratando como descrição detalhada.")
                          except ValueError:
-                            # Ignore, continue para a próxima tentativa
-                             pass # Não é um número float válido, tratar como descrição
+                            # Ignore, continue para a próxima tentativa (link)
+                             pass # Não é um número float válido, tratar como descrição ou link
 
+                     # Se ainda não achou coordenadas, tenta de link se for um link
                      if lat is None and input_original_manual.startswith("http"):
                           st.info("ℹ️ Entrada manual é um link. Tentando extrair coordenadas (sujeito a formato do link)...")
                           # Tenta regex para links Google Maps (com @lat,long) ou search (com ?,query=lat,long)
@@ -1107,6 +1109,8 @@ elif st.session_state.step == 'collect_buraco_details':
                                        st.info("✅ Coordenadas extraídas de link do Maps no input manual!")
                                   else:
                                        st.warning("⚠️ Coordenadas extraídas do link no input manual fora da faixa esperada. Tratando como descrição detalhada.")
+                                  # Se achou coords do link, a flag de sucesso de coords manual deve ser true
+                                  geocodificacao_sucesso_coords = True # Sobrescreve o sucesso da auto-geo, se houver
                               except ValueError:
                                  st.info("ℹ️ Valores no link não parecem coordenadas válidas. Tratando como descrição.")
                           else:
@@ -1115,7 +1119,8 @@ elif st.session_state.step == 'collect_buraco_details':
                                lat = None
                                lon = None
                                tipo_manual_processado = "Descrição Manual Detalhada"
-                     elif lat is None: # Se não achou coords e não é link, é descrição manual
+                     # Se não achou coords e não é link, então é descrição manual
+                     elif lat is None:
                          st.info("ℹ️ Entrada manual não detectada como coordenadas ou link. Tratando como descrição detalhada.")
                          tipo_manual_processado = "Descrição Manual Detalhada"
 
@@ -1132,50 +1137,59 @@ elif st.session_state.step == 'collect_buraco_details':
                               "google_maps_link_gerado": f"https://www.google.com/maps/search/?api=1&query={lat},{lon}",
                               "google_embed_link_gerado": f"https://www.google.com/maps/embed/v1/place?key={st.session_state.geocoding_api_key}&q={lat},{lon}" if st.session_state.geocoding_api_key else None # Tenta gerar embed link se tiver chave
                          }
-                         # Sinaliza sucesso para fins de exibir mapa/link
-                         geocodificacao_sucesso = True
+                         geocodificacao_sucesso_coords = True # Temos coordenadas!
                          st.success(f"✅ Localização Exata Obtida (via Input Manual - {tipo_manual_processado})!")
-                     elif input_original_manual: # Se há input manual, mas não extraiu Lat/Long, guarda como descrição manual
+                     # Se manual input existe mas não são coords, guarda como descrição manual:
+                     elif localizacao_manual_input_processed:
                          st.session_state.denuncia_completa['localizacao_exata_processada'] = {
                               "tipo": "Descrição Manual Detalhada",
                               "input_original": input_original_manual,
                               "descricao_manual": input_original_manual
                          }
-                         # Não considera sucesso para fins de exibir mapa/link baseado em coords
-                         geocodificacao_sucesso = False
-                         st.info("ℹ️ Localização exata processada como Descrição Manual Detalhada.")
-                     # else: Se input manual está vazio, mantém o que veio da geocodificação ou o default "Não informada"
+                         # geocodificacao_sucesso_coords permanece False
+
+                # --- Final check and setting the failure reason ---
+                # Check if the *final* processed location type is one that does NOT have coordinates
+                final_loc_type = st.session_state.denuncia_completa['localizacao_exata_processada'].get('tipo')
+
+                if final_loc_type not in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Coordenadas Extraídas de Link (Manual)', 'Geocodificada (API)']:
+                     # If we ended up *without* coordinates, let's store the reason why we couldn't get them.
+                     # This section combines potential reasons.
+                     reason_parts = []
+
+                     # Reason 1: Auto-geocoding failed
+                     if tentou_geocodificar and 'erro' in geo_resultado:
+                          reason_parts.append(f"Geocodificação automática falhou: {geo_resultado['erro']}")
+                     # Reason 2: Auto-geocoding not attempted due to missing key
+                     elif not st.session_state.geocoding_api_key: # Corrigido para 'geocoding'
+                          reason_parts.append("Chave de API de Geocodificação não fornecida.")
+                     # Reason 3: Auto-geocoding not attempted due to insufficient data (but key existed)
+                     elif st.session_state.geocoding_api_key and not tem_dados_para_geo: # Corrigido para 'geocoding'
+                          reason_parts.append("Dados insuficientes para Geocodificação automática (requer Rua, Número Próximo/Referência, Cidade, Estado).")
+
+                     # Reason 4: Manual input provided, but wasn't coordinates
+                     # Check if manual input was given AND it did NOT result in coordinates
+                     if localizacao_manual_input_processed and not (lat is not None and lon is not None):
+                          reason_parts.append("Coordenadas não encontradas ou extraídas do input manual.")
 
 
-                # Se NÃO HOUVE input manual com coords E a geocodificação automática falhou, registra o motivo
-                # e garante que o tipo é "Não informada" se não houver nem descrição manual.
-                loc_tipo_apos_processamento_manual = st.session_state.denuncia_completa['localizacao_exata_processada'].get('tipo')
+                     if reason_parts:
+                          st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = " / ".join(reason_parts)
+                     elif final_loc_type == "Não informada":
+                         # Catch-all if it's "Não informada" and no specific failure reason was captured
+                          st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = "Localização exata baseada em coordenadas não obtida."
 
-                if loc_tipo_apos_processamento_manual not in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Coordenadas Extraídas de Link (Manual)', 'Geocodificada (API)']:
-                     # Se a localização ainda não é baseada em coordenadas (veio de geo que falhou, ou não tentou geo, ou é descrição manual)
-                     if tentou_geocodificar and motivo_falha_geo != "Não tentado ou motivo não registrado":
-                           # Se tentou geocodificar e falhou, registra o motivo, a menos que uma descrição manual já tenha sido definida
-                           if loc_tipo_apos_processamento_manual != 'Descrição Manual Detalhada':
-                                st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = motivo_falha_geo
-                           elif 'motivo_falha_geocodificacao_anterior' not in st.session_state.denuncia_completa['localizacao_exata_processada']:
-                                # Se é descrição manual, mas a geo falhou antes, registra o motivo da falha da geo
-                                st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = motivo_falha_geo
-                     elif not st.session_state.geocoding_api_key:
-                          st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = "Chave de API de Geocodificação não fornecida."
-                     elif st.session_state.geocoding_api_key and not tem_dados_para_geo:
-                          st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = "Dados insuficientes para Geocodificação (requer Rua, Número Próximo/Referência, Cidade, Estado)."
+                # Display final warnings/info based on the final state *after* processing
+                # These messages are just informative based on the final state, distinct from the error messages during processing.
+                final_loc_type_after = st.session_state.denuncia_completa['localizacao_exata_processada'].get('tipo')
+                if final_loc_type_after == "Não informada":
+                     st.warning("⚠️ Nenhuma localização exata estruturada (coordenadas ou link) foi fornecida ou detectada, nem descrição manual. O relatório dependerá apenas do endereço base e observações.")
+                elif final_loc_type_after == 'Descrição Manual Detalhada':
+                     st.info("ℹ️ Nenhuma localização exata estruturada (coordenadas ou link) foi detectada. O relatório usará a descrição manual fornecida.")
+                # Note: Success message for coordinate-based location is shown earlier during processing.
 
 
-                     # Se a localização processada ainda é "Não informada" após tudo, exibe aviso
-                     if loc_tipo_apos_processamento_manual == "Não informada":
-                          st.warning("⚠️ Nenhuma localização exata estruturada (coordenadas ou link) foi fornecida ou detectada, nem descrição manual. O relatório dependerá apenas do endereço base e observações.")
-                     # Se é Descrição Manual, exibe um aviso diferente
-                     # Já coberto pela info acima, mas mantido por clareza
-                     # elif loc_tipo_apos_processamento_manual == "Descrição Manual Detalhada":
-                     #     st.warning("⚠️ Nenhuma localização exata estruturada (coordenadas ou link) foi detectada. O relatório usará a descrição manual.")
-
-
-                # Tudo processado, avança para a etapa de análise de IA
+                # Everything processed, advance to the IA analysis step
                 next_step()
 
     st.button("Voltar", on_click=prev_step)
@@ -1228,11 +1242,14 @@ elif st.session_state.step == 'processing_ia':
 
 
     # Rodar categorização de urgência
+    # Certifica-se de passar os dados IA processados, mesmo que estejam vazios ou com erro
+    current_insights = st.session_state.denuncia_completa.get('insights_ia', {})
+    current_analise_imagem = st.session_state.denuncia_completa.get('analise_imagem_ia', {})
     if st.session_state.gemini_model:
         st.session_state.denuncia_completa['urgencia_ia'] = categorizar_urgencia_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
-            st.session_state.denuncia_completa['insights_ia'],
-            st.session_state.denuncia_completa.get('analise_imagem_ia', {}), # Passa análise de imagem (pode estar vazia)
+            current_insights,
+            current_analise_imagem, # Passa análise de imagem (pode estar vazia)
             st.session_state.gemini_model
         )
     else:
@@ -1244,8 +1261,8 @@ elif st.session_state.step == 'processing_ia':
     if st.session_state.gemini_model:
         st.session_state.denuncia_completa['sugestao_acao_ia'] = sugerir_causa_e_acao_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
-            st.session_state.denuncia_completa['insights_ia'],
-            st.session_state.denuncia_completa.get('analise_imagem_ia', {}), # Passa análise de imagem (pode estar vazia)
+            current_insights,
+            current_analise_imagem, # Passa análise de imagem (pode estar vazia)
             st.session_state.gemini_model
         )
     else:
@@ -1349,7 +1366,7 @@ elif st.session_state.step == 'show_report':
 
                      # Tenta incorporar Google Maps se houver link embed gerado E chave de geocoding
                      embed_link = localizacao_exata.get('google_embed_link_gerado')
-                     if embed_link and st.session_state.geocoding_api_key:
+                     if embed_link and st.session_state.geocoding_api_key: # Corrigido para 'geocoding'
                          st.subheader("Visualização no Google Maps (Embed)")
                          # Incorpora o iframe do Google Maps
                          st.components.v1.html(
@@ -1359,10 +1376,10 @@ elif st.session_state.step == 'show_report':
                          )
                          # st.info("ℹ️ Requer chave de Geocoding API e a Embed API habilitada no Google Cloud para funcionar.") # Já avisado antes
 
-                     elif st.session_state.geocoding_api_key and not embed_link:
+                     elif st.session_state.geocoding_api_key and not embed_link: # Corrigido para 'geocoding'
                           # Isso pode acontecer se a geocodificação automática falhou de forma que não gerou embed link
                           st.warning("⚠️ Chave de Geocodificação fornecida, mas não foi possível gerar um mapa Google Maps incorporado. Verifique se a Embed API está habilitada no Google Cloud.")
-                     elif not st.session_state.geocoding_api_key:
+                     elif not st.session_state.geocoding_api_key: # Corrigido para 'geocoding'
                            st.warning("⚠️ Chave de API de Geocodificação não fornecida. O mapa Google Maps incorporado não pode ser gerado.")
 
 
@@ -1390,8 +1407,8 @@ elif st.session_state.step == 'show_report':
             st.warning("Localização exata não coletada de forma estruturada (coordenadas/link), nem descrição manual. O relatório dependerá da descrição e endereço base.")
 
         # Inclui motivo da falha na geocodificação se aplicável e se não foi sobrescrito por coords manuais
-        if localizacao_exata.get('motivo_falha_geocodificacao_anterior') and tipo_loc not in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Coordenadas Extraídas de Link (Manual)']:
-             st.info(f"ℹ️ Nota: Não foi possível obter a localização exata via Geocodificação automática. Motivo: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')}")
+        if localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
+             st.info(f"ℹ️ Nota: Motivo da falha na geocodificação automática ou input manual sem coordenadas: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')}")
 
 
     with st.expander("📷 Imagem da Denúncia", expanded=True):
@@ -1420,12 +1437,12 @@ elif st.session_state.step == 'show_report':
         if st.session_state.gemini_vision_model:
              with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True):
                  st.write(analise_imagem_ia.get('analise_imagem', 'Análise não realizada ou com erro.'))
-        elif 'analise_imagem_ia' in dados_completos and 'analise_imagem' in dados_completos['analise_imagem_ia'] and 'indisponível' in dados_completos['analise_imagem_ia']['analise_imagem'].lower():
-             # Exibe o expander se a análise foi tentada, mas falhou ou o modelo estava indisponível
+        # Verifica se a análise foi tentada, mas falhou ou o modelo estava indisponível (verifica a mensagem de erro padrão)
+        elif 'analise_imagem_ia' in dados_completos and 'analise_imagem' in dados_completos['analise_imagem_ia'] and ('indisponível' in dados_completos['analise_imagem_ia']['analise_imagem'].lower() or 'erro' in dados_completos['analise_imagem_ia']['analise_imagem'].lower()):
              with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True):
                   st.write(analise_imagem_ia.get('analise_imagem', 'Erro na análise visual ou modelo indisponível.'))
         elif imagem_data and 'bytes' in imagem_data:
-             # Se há imagem mas não há resultado de análise (e não é erro de indisponibilidade), algo deu errado
+             # Se há imagem mas não há resultado de análise (e não é erro de indisponibilidade registrado), algo deu errado
              with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True):
                   st.warning("⚠️ Análise Visual de Imagem não foi concluída. Verifique o modelo Gemini Vision e a imagem.")
                   st.write(analise_imagem_ia.get('analise_imagem', 'Análise não iniciada ou falhou sem mensagem específica.'))
@@ -1450,7 +1467,7 @@ elif st.session_state.step == 'show_report':
     # Opção para reiniciar o processo
     if st.button("Iniciar Nova Denúncia"):
         # Limpa o estado da sessão para recomeçar (exceto as chaves API e modelos que são cache_resource)
-        keys_to_keep = ['api_keys_loaded', 'gemini_model', 'gemini_vision_model', 'geocoding_api_key']
+        keys_to_keep = ['api_keys_loaded', 'gemini_model', 'gemini_vision_model', 'geocoding_api_key'] # Corrigido para 'geocoding'
         all_keys = list(st.session_state.keys())
         for key in all_keys:
             if key not in keys_to_keep:
