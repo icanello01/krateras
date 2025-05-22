@@ -1,5 +1,6 @@
 import requests
 import streamlit as st
+import load_api_keys, init_gemini_models
 
 @st.cache_data(show_spinner="🔍 Consultando ViaCEP...")
 def buscar_cep(cep: str):
