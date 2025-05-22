@@ -1,0 +1,20 @@
+/* Theme leve e elegante para Krateras */
+body, html {
+    font-family: 'Open Sans', sans-serif;
+    background: linear-gradient(to right, #e3f2fd, #ffffff);
+    color: #333;
+}
+h1, h2 {
+    color: #1976d2;
+}
+.stButton>button {
+    background-color: #1976d2;
+    color: white;
+    border-radius: 8px;
+    padding: 0.6em 1.2em;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.stButton>button:hover {
+    background-color: #1565c0;
+}
