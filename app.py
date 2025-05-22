@@ -1,4 +1,3 @@
---- START OF FILE app.py ---
 # -*- coding: utf-8 -*-
 """
 Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v4.0 - Visão Robótica Ativada)
