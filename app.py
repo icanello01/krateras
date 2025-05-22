@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v4.3 - Inicialização Robusta de IA)
+Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v5.0 - Estabilidade Aprimorada)
 
-Bem-vindo à versão visual do Krateras, com visão robótica, fluxo CEP otimizado,
-e inicialização de IA mais robusta!
-Interface amigável, inteligência da IA aprimorada e segurança de chaves mantida.
+Bem-vindo à versão visual do Krateras, agora focada na estabilidade e fluxo!
+Análise de imagem por IA desativada, mas upload para visualização mantido.
+Interface amigável, inteligência da IA (Texto) otimizada e segurança de chaves mantida.
 
-Tecnologias: Python, Streamlit, Google Gemini API (Text & Vision), Google Geocoding API, ViaCEP.
-Objetivo: Coletar dados de denúncias de buracos com mais detalhes estruturados,
-incluindo análise visual por IA de imagens, geocodificação, e gerar relatórios
-detalhados, priorizados e com visualização de mapa.
+Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP.
+Objetivo: Coletar dados de denúncias de buracos com detalhes estruturados e observações,
+incluir imagem para referência visual, geocodificação, e gerar relatórios
+detalhados e priorizados com visualização de mapa.
 
-Vamos juntos consertar essas ruas! Verificando e ajustando rotores de IA...
+Vamos juntos consertar essas ruas! Priorizando estabilidade e precisão textual...
 """
 
 import streamlit as st
@@ -38,7 +38,7 @@ st.markdown("""
     padding-top: 2rem;
     padding-right: 3rem;
     padding-left: 3rem;
-    padding-bottom: 2rem;
+    padding-bottom: 2 Chapadasrem;
 }
 h1, h2, h3 {
     color: #4A90E2; /* Azul Cratera */
@@ -99,8 +99,8 @@ if 'api_keys_loaded' not in st.session_state:
     st.session_state.api_keys_loaded = False
 if 'gemini_model' not in st.session_state:
     st.session_state.gemini_model = None
-if 'gemini_vision_model' not in st.session_state: # Novo estado para o modelo de visão
-    st.session_state.gemini_vision_model = None
+# if 'gemini_vision_model' not in st.session_state: # Removido estado para modelo de visão
+#     st.session_state.gemini_vision_model = None
 if 'geocoding_api_key' not in st.session_state:
     st.session_state.geocoding_api_key = None
 
@@ -109,15 +109,15 @@ if 'geocoding_api_key' not in st.session_state:
 
 def load_api_keys() -> tuple[Optional[str], Optional[str]]:
     """
-    Tenta obter as chaves de API do Google Gemini e Google Maps Geocoding de Streamlit Secrets.
+    Tenta obter as chaves de API do Google Gemini (Text) e Google Maps Geocoding de Streamlit Secrets.
     Retorna None se não encontradas.
     """
-    # Assume que a mesma chave GOOGLE_API_KEY serve para modelos de texto e visão
+    # Assume que a mesma chave GOOGLE_API_KEY serve apenas para modelo de texto agora
     gemini_key = st.secrets.get('GOOGLE_API_KEY')
     geocoding_key = st.secrets.get('geocoding_api_key')
 
     if not gemini_key:
-        st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text/Vision) estarão desabilitadas.")
+        st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text) estarão desabilitadas.")
     if not geocoding_key:
         st.warning("⚠️ Segredo 'geocoding_api_key' não encontrado nos Streamlit Secrets. Geocodificação automática e mapa Google Embed estarão desabilitados.")
         st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI\"\ngeocoding_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
@@ -127,11 +127,13 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
 # --- Inicializar APIs (Cacheado para performance) ---
 
 @st.cache_resource
-def init_gemini_models(api_key: Optional[str]) -> tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]:
-    """Inicializa os modelos Google Gemini (Texto e Visão) com cache."""
+# def init_gemini_models(api_key: Optional[str]) -> tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]: # Assinatura antiga
+def init_gemini_text_model(api_key: Optional[str]) -> Optional[genai.GenerativeModel]:
+    """Inicializa o modelo Google Gemini (Texto APENAS) com cache."""
     if not api_key:
         st.error("❌ ERRO na Fábrica de Modelos: Chave de API Gemini não fornecida.")
-        return None, None # Retorna None para ambos se a chave não for fornecida
+        # return None, None # Retorno antigo
+        return None # Retorno novo
     try:
         genai.configure(api_key=api_key)
         st.success("✅ Conexão com API Google Gemini estabelecida.")
@@ -147,7 +149,7 @@ def init_gemini_models(api_key: Optional[str]) -> tuple[Optional[genai.Generativ
             found_model = next((m for m in text_models if m.name.endswith(name)), None)
             if found_model:
                 text_model_obj = genai.GenerativeModel(found_model.name)
-                st.success(f"✅ Modelo de Texto Gemini selecionado: '{found_model.name.replace('models/', '')}'.")
+                st.success(f"✅ Modelo de Texto Gemini selecionado: '{found_model.name.replace('models/', '')}'. A IA Textual está online!")
                 break
         if not text_model_obj:
             if text_models:
@@ -158,35 +160,38 @@ def init_gemini_models(api_key: Optional[str]) -> tuple[Optional[genai.Generativ
                  st.error("❌ ERRO na Fábrica de Modelos: Nenhum modelo de texto Gemini compatível encontrado na sua conta.")
 
 
-        # Selecionar modelo de Visão preferencial (multimodal)
-        vision_model_obj: Optional[genai.GenerativeModel] = None
-        # Listar modelos que suportam generateContent E têm o atributo supported_input_response_mime_types E suportam algum tipo de imagem
-        vision_models_candidates = [
-            m for m in available_models
-            if 'generateContent' in m.supported_generation_methods
-            and hasattr(m, 'supported_input_response_mime_types') # **CORREÇÃO APLICADA AQUI**
-            and any(mime_type.startswith('image/') for mime_type in m.supported_input_response_mime_types)
-        ]
+        # Modelo de Visão removido
+        # vision_model_obj: Optional[genai.GenerativeModel] = None
+        # # Listar modelos que suportam generateContent E têm o atributo supported_input_response_mime_types E suportam algum tipo de imagem
+        # vision_models_candidates = [
+        #     m for m in available_models
+        #     if 'generateContent' in m.supported_generation_methods
+        #     and hasattr(m, 'supported_input_response_mime_types') # **CORREÇÃO APLICADA AQUI**
+        #     and any(mime_type.startswith('image/') for mime_type in m.supported_input_response_mime_types)
+        # ]
 
-        preferred_vision_names = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-pro-vision']
-        for name in preferred_vision_names:
-             # Verifica se o nome preferencial está na lista de candidatos visuais filtrados
-             found_model = next((m for m in vision_models_candidates if m.name.endswith(name)), None)
-             if found_model:
-                vision_model_obj = genai.GenerativeModel(found_model.name)
-                st.success(f"✅ Modelo de Visão Gemini selecionado: '{found_model.name.replace('models/', '')}'.")
-                break
+        # preferred_vision_names = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-pro-vision']
+        # for name in preferred_vision_names:
+        #      # Verifica se o nome preferencial está na lista de candidatos visuais filtrados
+        #      found_model = next((m for m in vision_models_candidates if m.name.endswith(name)), None)
+        #      if found_model:
+        #         vision_model_obj = genai.GenerativeModel(found_model.name)
+        #         st.success(f"✅ Modelo de Visão Gemini selecionado: '{found_model.name.replace('models/', '')}'.")
+        #         break
 
-        if not vision_model_obj:
-            st.warning("⚠️ AVISO: Nenhum modelo Gemini compatível com análise de imagem ('gemini-pro-vision', 'gemini-1.5-*') encontrado ou disponível. Análise visual por IA estará desabilitada. Verifique se ativou modelos como 'gemini-1.5-flash-latest' na sua conta.")
+        # if not vision_model_obj:
+        #     st.warning("⚠️ AVISO: Nenhum modelo Gemini compatível com análise de imagem ('gemini-pro-vision', 'gemini-1.5-*') encontrado ou disponível. Análise visual por IA estará desabilitada. Verifique se ativou modelos como 'gemini-1.5-flash-latest' na sua conta.")
 
 
-        return text_model_obj, vision_model_obj
+        # return text_model_obj, vision_model_obj # Retorno antigo
+        return text_model_obj # Retorno novo
 
     except Exception as e:
         st.error(f"❌ ERRO no Painel de Controle Gemini: Falha na inicialização dos modelos Google Gemini. Verifique sua chave e status do serviço.")
         st.exception(e)
-        return None, None
+        # return None, None # Retorno antigo
+        return None # Retorno novo
+
 
 # --- Funções de API Call (Cacheado para resultados estáveis por sessão) ---
 
@@ -287,7 +292,7 @@ SAFETY_SETTINGS = [
 @st.cache_data(show_spinner="🧠 Analisando características estruturadas e observações com IA Gemini...")
 def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, Any], _observacoes: str, _model: genai.GenerativeModel) -> Dict[str, Any]:
     """
-    Utiliza o Gemini para analisar as características estruturadas e as observações
+    Utiliza o Gemini (Texto) para analisar as características estruturadas e as observações
     e extrair insights estruturados.
     """
     if not _model:
@@ -341,57 +346,21 @@ def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, An
     except Exception as e:
         return {"insights": f"❌ Erro ao analisar características/observações com IA: {e}"}
 
-@st.cache_data(show_spinner="🧠 IA está vendo... Analisando a imagem do buraco...")
-def analisar_imagem_gemini(_image_bytes: bytes, _mime_type: str, _model: genai.GenerativeModel) -> Dict[str, Any]:
-    """Utiliza o modelo Gemini Vision para analisar uma imagem do buraco."""
-    if not _model:
-        return {"analise_imagem": "🤖 Análise visual por IA indisponível (Motor Gemini Vision offline)."}
-
-    try:
-        # Preparar a imagem para a API
-        # genai.types.part() espera BytesIO ou bytes diretamente
-        image_part = genai.types.part(mime_type=_mime_type, data=io.BytesIO(_image_bytes).getvalue())
-
-        prompt = """
-        Descreva o buraco nesta imagem. Foque nos seguintes aspectos visuais:
-        - Tamanho aparente em relação a objetos de referência visíveis (carro, pneu, pessoa, largura da pista, etc.).
-        - Profundidade aparente.
-        - Forma e contorno do buraco.
-        - Condições da superfície ao redor (asfalto bom/ruim, rachaduras, remendos).
-        - Presença de água, detritos ou objetos dentro do buraco.
-        - Ambiente da via (parece ser via principal, secundária, residencial, etc., se visível. Há carros, faixas, acostamento?).
-        - Qualidades visuais que indicam perigo (ex: buraco grande na pista principal, buraco em curva, dificuldade visual para desviar, má iluminação aparente se for foto noturna).
-        - Outros detalhes relevantes visíveis na imagem que ajudem a descrever o problema ou o local.
-
-        Baseie sua análise SOMENTE no que você pode ver na imagem. Seja objetivo e descritivo.
-        Formate a resposta como um texto narrativo claro.
-
-        Análise Visual:
-        """
-        # A API generate_content aceita uma lista de partes (texto e imagem)
-        response = _model.generate_content([prompt, image_part], safety_settings=SAFETY_SETTINGS)
-
-        if not hasattr(response, 'candidates') or not response.candidates:
-             block_reason = "Desconhecido"
-             if hasattr(response, 'prompt_feedback') and hasattr(response.prompt_feedback, 'block_reason'):
-                 block_reason = response.prompt_feedback.block_reason.name
-             return {"analise_imagem": f"❌ Análise de imagem bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
-
-        return {"analise_imagem": response.text.strip()}
-    except Exception as e:
-        return {"analise_imagem": f"❌ Erro ao analisar a imagem com IA: {e}. Verifique se o modelo Gemini selecionado suporta análise de imagem e se a imagem é válida."}
-
+# @st.cache_data(show_spinner="🧠 IA está vendo... Analisando a imagem do buraco...") # REMOVIDO
+# def analisar_imagem_gemini(_image_bytes: bytes, _mime_type: str, _model: genai.GenerativeModel) -> Dict[str, Any]: # REMOVIDO
+#     """Utiliza o modelo Gemini Vision para analisar uma imagem do buraco.""" # REMOVIDO
+#     # ... código de análise de imagem ... # REMOVIDO
 
 @st.cache_data(show_spinner="🧠 Calculando o Nível de Prioridade Robótica...")
-def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: Dict[str, Any], _analise_imagem_ia: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]:
-    """Utiliza o Gemini para sugerir uma categoria de urgência com base nos dados estruturados, observações, insights e análise de imagem."""
+def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]: # Removido _analise_imagem_ia
+    """Utiliza o Gemini (Texto) para sugerir uma categoria de urgência com base nos dados estruturados, observações e insights."""
     if not _model:
         return {"urgencia_ia": "🤖 Sugestão de urgência via IA indisponível (Motor Gemini Text offline)."}
 
     caracteristicas = _dados_denuncia.get('buraco', {}).get('caracteristicas_estruturadas', {})
     observacoes = _dados_denuncia.get('buraco', {}).get('observacoes_adicionais', 'Sem observações.')
     insights_texto = _insights_ia.get('insights', 'Análise de insights não disponível.')
-    analise_imagem_texto = _analise_imagem_ia.get('analise_imagem', 'Análise de imagem não disponível ou com erro.')
+    # analise_imagem_texto = _analise_imagem_ia.get('analise_imagem', 'Análise de imagem não disponível ou com erro.') # REMOVIDO
 
     localizacao_exata = _dados_denuncia.get('localizacao_exata_processada', {})
     tipo_loc = localizacao_exata.get('tipo', 'Não informada')
@@ -405,10 +374,6 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
         lat = localizacao_exata.get('latitude')
         lon = localizacao_exata.get('longitude')
         loc_contexto += f" Coordenadas: {lat}, {lon}. Link gerado: {localizacao_exata.get('google_maps_link_gerado', 'Não disponível')}."
-    # O motivo da falha na geocodificação agora é tratado *depois* dos processamentos no collect_buraco_details
-    # elif localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
-    #      loc_contexto += f" (Nota: Tentativa de Geocodificação automática falhou/não tentada: {localizacao_exata.get('motivo_falha_geocodificacao_anterior', 'Motivo desconhecido')})"
-
 
     # Formatar as características estruturadas para o prompt
     caracteristicas_formatadas = []
@@ -422,8 +387,8 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
 
 
     prompt = f"""
-    Com base em TODOS os dados da denúncia (características estruturadas, observações, insights da análise de texto e, se disponível, análise da imagem), sugira a MELHOR categoria de urgência para o reparo deste buraco.
-    Considere a severidade/tamanho (informado e analisado visualmente), profundidade (informada e analisada visualmente), PERIGOS POTENCIAIS e impactos mencionados, o CONTEXTO DA VIA (tipo de tráfego, contexto específico) e qualquer ADICIONAL visual da análise da imagem que reforce ou altere a percepção dos dados informados.
+    Com base nos dados da denúncia (características estruturadas, observações) e nos insights da análise de texto, sugira a MELHOR categoria de urgência para o reparo deste buraco.
+    Considere a severidade/tamanho, profundidade, PERIGOS POTENCIAIS e impactos mencionados, o CONTEXTO DA VIA (tipo de tráfego, contexto específico) e qualquer ADICIONAL relevante nas observações.
 
     Escolha UMA Categoria de Urgência entre estas:
     - Urgência Baixa: Buraco pequeno, sem perigo aparente, em local de baixo tráfego. Principalmente estético ou pequeno incômodo.
@@ -444,11 +409,7 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
     Insights Extraídos pela Análise de Texto/Características:
     {insights_texto}
 
-    Análise Visual da Imagem (se disponível):
-    {analise_imagem_texto}
-
-
-    Com base em TODOS estes dados, qual categoria de urgência você sugere? Forneça APENAS a categoria (ex: "Urgência Alta") e uma breve JUSTIFICATIVA (máximo 2 frases) explicando POR QUE essa categoria foi sugerida, citando os elementos mais importantes dos dados fornecidos (incluindo análise visual se relevante).
+    Com base nestes dados, qual categoria de urgência você sugere? Forneça APENAS a categoria (ex: "Urgência Alta") e uma breve JUSTIFICATIVA (máximo 2 frases) explicando POR QUE essa categoria foi sugerida, citando os elementos mais importantes dos dados fornecidos.
 
     Formato de saída (muito importante seguir este formato):
     Categoria Sugerida: [Categoria Escolhida]
@@ -467,21 +428,21 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
 
 
 @st.cache_data(show_spinner="🧠 IA está pensando... Qual pode ser a causa e a melhor ação para este buraco?")
-def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: Dict[str, Any], _analise_imagem_ia: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]:
-    """Utiliza o Gemini para sugerir possíveis causas do buraco e ações de reparo com base nos dados, insights e análise de imagem."""
+def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]: # Removido _analise_imagem_ia
+    """Utiliza o Gemini (Texto) para sugerir possíveis causas do buraco e ações de reparo com base nos dados, insights e observações."""
     if not _model:
         return {"sugestao_acao_ia": "🤖 Sugestões de causa/ação via IA indisponíveis (Motor Gemini Text offline)."}
 
     caracteristicas = _dados_denuncia.get('buraco', {}).get('caracteristicas_estruturadas', {})
-    observacoes = _dados_denuncia.get('buraco', {}).get('observacoes_adicionais', 'Sem observações.')
+    observacoes = _dados_denuncia.get('observacoes_adicionais', 'Sem observações.')
     insights_texto = _insights_ia.get('insights', 'Análise de insights não disponível.')
-    analise_imagem_texto = _analise_imagem_ia.get('analise_imagem', 'Análise de imagem não disponível ou com erro.')
+    # analise_imagem_texto = _analise_imagem_ia.get('analise_imagem', 'Análise de imagem não disponível ou com erro.') # REMOVIDO
 
     # Formatar as características estruturadas para o prompt
     caracteristicas_formatadas = []
     for key, value in caracteristicas.items():
         if isinstance(value, list):
-            # Filtra 'Selecione' ou vazios da lista
+             # Filtra 'Selecione' ou vazios da lista
             caracteristicas_formatadas.append(f"- {key}: {', '.join([item for item in value if item and item != 'Selecione']) if value else 'Não informado'}")
         else:
             caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
@@ -489,9 +450,9 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
 
 
     prompt = f"""
-    Com base nos dados fornecidos pelo denunciante (características estruturadas, observações) e nos insights extraídos pelas análises de IA (texto e, se disponível, imagem), tente sugerir:
-    1. Uma ou duas PÓSSIVEIS CAUSAS para a formação deste buraco específico (ex: chuva forte recente, desgaste do asfalto pelo tempo/tráfego, problema na drenagem subterrânea, afundamento devido a reparo anterior, obra mal feita na região). Baseie-se em todos os dados disponíveis, incluindo o contexto da via e análise visual.
-    2. Sugestões de TIPOS DE AÇÃO ou REPARO mais adequados ou necessários para resolver este problema (ex: simples tapa-buraco, recapeamento da seção, inspeção de drenagem, sinalização de emergência, interdição parcial da via, reparo na rede de água/esgoto). Baseie-se na severidade, perigos, o que foi observado/analisado (texto e visual) e as possíveis causas.
+    Com base nos dados fornecidos pelo denunciante (características estruturadas, observações) e nos insights extraídos pela análise de IA de texto, tente sugerir:
+    1. Uma ou duas PÓSSIVEIS CAUSAS para a formação deste buraco específico (ex: chuva forte recente, desgaste do asfalto pelo tempo/tráfego, problema na drenagem subterrânea, afundamento devido a reparo anterior, obra mal feita na região). Baseie-se em todos os dados textuais disponíveis.
+    2. Sugestões de TIPOS DE AÇÃO ou REPARO mais adequados ou necessários para resolver este problema (ex: simples tapa-buraco, recapeamento da seção, inspeção de drenagem, sinalização de emergência, interdição parcial da via, reparo na rede de água/esgoto). Baseie-se na severidade, perigos e o que foi observado/analisado (texto).
     Baseie suas sugestões EXCLUSIVAMENTE nas informações e análises disponíveis. Se os dados não derem pistas suficientes, indique "Não especificado/inferido nos dados". Seja lógico e prático.
 
     Informações Relevantes da Denúncia:
@@ -500,12 +461,10 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
     Observações Adicionais: "{observacoes}"
     Insights Extraídos pela Análise de Texto/Características:
     {insights_texto}
-    Análise Visual da Imagem (se disponível):
-    {analise_imagem_texto}
 
     Formato de saída:
     Possíveis Causas Sugeridas: [Lista de causas sugeridas baseadas nos dados ou 'Não especificado/inferido nos dados']
-    Sugestões de Ação/Reparo Sugeridas: [Lista de ações sugeridas baseadas nos dados/insights/análise visual ou 'Não especificado/inferido nos dados']
+    Sugestões de Ação/Reparo Sugeridas: [Lista de ações sugeridas baseadas nos dados/insights ou 'Não especificado/inferido nos dados']
     """
     try:
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
@@ -520,7 +479,7 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
 
 @st.cache_data(show_spinner="🧠 Compilando o Relatório Final Robótico e Inteligente com IA Gemini...")
 def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]:
-    """Utiliza o Gemini para gerar um resumo narrativo inteligente da denúncia completa, incluindo dados estruturados e análises de IA (texto e imagem)."""
+    """Utiliza o Gemini (Texto) para gerar um resumo narrativo inteligente da denúncia completa, incluindo dados estruturados e análises de IA (texto)."""
     if not _model:
         return {"resumo_ia": "🤖 Resumo inteligente via IA indisponível (Motor Gemini Text offline)."}
 
@@ -531,9 +490,11 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     observacoes = buraco.get('observacoes_adicionais', 'Nenhuma observação adicional fornecida.')
     localizacao_exata = _dados_denuncia_completa.get('localizacao_exata_processada', {})
     insights_ia = _dados_denuncia_completa.get('insights_ia', {}).get('insights', 'Análise da descrição/características não disponível ou com erro.')
-    analise_imagem_ia = _dados_denuncia_completa.get('analise_imagem_ia', {}).get('analise_imagem', 'Análise visual por IA não disponível ou com erro.')
-    urgencia_ia = _dados_denuncia_completa.get('urgencia_ia', {}).get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')
-    sugestao_acao_ia = _dados_denuncia_completa.get('sugestao_acao_ia', {}).get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.')
+    # analise_imagem_ia = _dados_denuncia_completa.get('analise_imagem_ia', {}).get('analise_imagem', 'Análise visual por IA não disponível ou com erro.') # REMOVIDO
+    # Acessando os resultados da IA com get e fallback para garantir que são dicionários
+    urgencia_ia_result = _dados_denuncia_completa.get('urgencia_ia', {})
+    sugestao_acao_ia_result = _dados_denuncia_completa.get('sugestao_acao_ia', {})
+
 
     loc_info_resumo = "Localização exata não especificada ou processada."
     tipo_loc_processada = localizacao_exata.get('tipo', 'Não informada')
@@ -561,7 +522,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     caracteristicas_formatadas = []
     for key, value in caracteristicas.items():
         if isinstance(value, list):
-            # Filtra 'Selecione' ou vazios da lista
+             # Filtra 'Selecione' ou vazios da lista
             caracteristicas_formatadas.append(f"- {key}: {', '.join([item for item in value if item and item != 'Selecione']) if value else 'Não informado'}")
         else:
             caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
@@ -571,7 +532,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     prompt = f"""
     Gere um resumo narrativo conciso (máximo 10-12 frases) para a seguinte denúncia de buraco no aplicativo Krateras.
     Este resumo deve ser formal, objetivo e útil para equipes de manutenção ou gestão pública.
-    Combine os dados estruturados, as observações adicionais, a localização exata processada e os resultados das análises de IA (texto e, se disponível, imagem).
+    Combine os dados estruturados, as observações adicionais, a localização exata processada e os resultados das análises de IA (texto).
 
     Inclua:
     - Quem denunciou (Nome, Cidade de Residência).
@@ -581,7 +542,6 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     - As características estruturadas fornecidas (Tamanho, Perigo, Profundidade, Água, Tráfego, Contexto da Via).
     - Informações adicionais importantes das Observações.
     - Os principais pontos da Análise de Texto/Características de IA (Perigos Potenciais, Contexto Adicional).
-    - Principais pontos da Análise Visual de Imagem de IA (se disponível).
     - A SUGESTÃO de Categoria de Urgência pela IA e sua Justificativa.
     - As SUGESTÕES de POSSÍVEIS CAUSAS e TIPOS DE AÇÃO/REPARO sugeridas pela IA (se disponíveis).
 
@@ -597,14 +557,11 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     Insights da Análise de Texto/Características de IA:
     {insights_ia}
 
-    Análise Visual da Imagem de IA:
-    {analise_imagem_ia}
-
     Sugestão de Urgência pela IA:
-    {urgencia_ia.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')}
+    {urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')}
 
     Sugestões de Causa e Ação pela IA:
-    {sugestao_acao_ia.get('sugestao_acao_ia', 'Sugestões não geradas ou com erro.')}
+    {sugestao_acao_ia_result.get('sugestao_acao_ia', 'Sugestões não geradas ou com erro.')}
 
 
     Gere o resumo em português. Comece com "Relatório Krateras: Denúncia de buraco..." ou algo similar. Use linguagem clara e direta.
@@ -695,27 +652,33 @@ st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 if st.session_state.step == 'start':
     st.write("""
-    Olá! Krateras v4.3 entrando em órbita com **Visão Robótica**, fluxo CEP otimizado e inicialização de IA mais robusta! Sua missão, caso aceite: denunciar buracos na rua
+    Olá! Krateras v5.0 entrando em órbita com **Estabilidade Prioritária**! Sua missão, caso aceite: denunciar buracos na rua
     para que possam ser consertados. A segurança dos seus dados e a precisão da denúncia
     são nossas prioridades máximas.
 
-    Utilizamos inteligência artificial (Google Gemini Text & Vision) e APIs de localização (Google Geocoding,
-    ViaCEP) para coletar, analisar (inclusive imagens!) e gerar um relatório detalhado para as autoridades competentes.
+    Nesta versão, focamos na estabilidade da análise textual e geolocalização. A funcionalidade
+    de análise automática de imagem por IA foi temporariamente desativada, mas você ainda pode
+    fazer o upload de uma foto para inclusão no relatório visual.
 
-    Fui criado com o que há de mais avançado em Programação, IA (Análise de Texto e Visual!), Design Inteligente,
+    Utilizamos inteligência artificial (Google Gemini Text) e APIs de localização (Google Geocoding,
+    ViaCEP) para coletar, analisar (via texto) e gerar um relatório detalhado para as autoridades competentes.
+
+    Fui criado com o que há de mais avançado em Programação, IA (Análise de Texto!), Design Inteligente,
     Matemática e Lógica Inabalável. Com acesso seguro às APIs, sou imparável.
 
     Clique em Iniciar para começarmos a coleta de dados.
     """)
 
-    st.info("⚠️ Suas chaves de API do Google (Gemini e Geocoding) devem ser configuradas nos Streamlit Secrets (`.streamlit/secrets.toml`) para que a IA e a geocodificação automática funcionem corretamente e de forma segura. A API Gemini pode precisar de modelos multimodais (`gemini-pro-vision`, `gemini-1.5-flash-latest`, etc.) habilitados para a análise de imagens.")
+    st.info("⚠️ Suas chaves de API do Google (Gemini e Geocoding) devem ser configuradas nos Streamlit Secrets (`.streamlit/secrets.toml`) para que a IA e a geocodificação automática funcionem corretamente e de forma segura. A API Gemini (apenas o modelo de texto é necessário agora) e a API Geocoding podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
 
 
     if st.button("Iniciar Missão Denúncia!"):
-        # Carregar chaves e inicializar APIs antes de coletar dados
+        # Carregar chaves e inicializar APIs
         gemini_api_key, geocoding_api_key = load_api_keys()
         st.session_state.geocoding_api_key = geocoding_api_key # Armazena a chave de geocoding no estado
-        st.session_state.gemini_model, st.session_state.gemini_vision_model = init_gemini_models(gemini_api_key) # Inicializa os modelos Gemini (cacheado)
+        # st.session_state.gemini_model, st.session_state.gemini_vision_model = init_gemini_models(gemini_api_key) # Chamada antiga
+        st.session_state.gemini_model = init_gemini_text_model(gemini_api_key) # Inicializa APENAS modelo de texto
+        st.session_state.gemini_vision_model = None # Garante que o modelo de visão é None
         st.session_state.api_keys_loaded = True # Marca que tentamos carregar as chaves
         next_step()
 
@@ -975,11 +938,11 @@ elif st.session_state.step == 'collect_buraco_details':
         """, unsafe_allow_html=True)
         localizacao_manual_input = st.text_input("Insira COORDENADAS (Lat,Long), LINK do Maps com Coordenadas, OU DESCRIÇÃO DETALHADA manual:", key='localizacao_manual')
 
-        st.subheader("📷 Foto do Buraco (Opcional, mas a IA Robótica adoraria ver!)")
-        st.write("Uma boa foto ajuda MUITO na análise! Por favor, envie uma imagem clara e com boa resolução, mostrando o buraco e, se possível, algo para dar noção de tamanho (ex: um pneu, um sapato, ou a largura da rua).")
+        st.subheader("📷 Foto do Buraco (Opcional, para referência visual no relatório)")
+        st.write("Uma boa foto ajuda as equipes de reparo a identificar o problema rapidamente. Por favor, envie uma imagem clara.")
         uploaded_image = st.file_uploader("Carregar Imagem do Buraco:", type=['jpg', 'jpeg', 'png', 'webp'], key='uploaded_image_buraco')
         if uploaded_image:
-             st.info(f"Imagem '{uploaded_image.name}' pronta para análise.")
+             st.info(f"Imagem '{uploaded_image.name}' carregada e será incluída no relatório.")
 
 
         st.subheader("📝 Observações Adicionais")
@@ -1031,9 +994,9 @@ elif st.session_state.step == 'collect_buraco_details':
                             "type": uploaded_image.type,
                             "bytes": image_bytes # Armazena os bytes
                         }
-                        st.info("✅ Imagem carregada com sucesso para análise!")
+                        # st.info("✅ Imagem carregada com sucesso para análise!") # Mensagem ajustada acima
                     except Exception as e:
-                        st.error(f"❌ Erro ao processar a imagem: {e}. Por favor, tente novamente.")
+                        st.error(f"❌ Erro ao processar a imagem para inclusão no relatório: {e}. Por favor, tente novamente.")
                         st.session_state.denuncia_completa['buraco']['imagem_denuncia'] = {"erro": f"Erro ao carregar: {e}"}
 
 
@@ -1203,9 +1166,7 @@ elif st.session_state.step == 'collect_buraco_details':
                      elif final_loc_type == "Não informada":
                          # Fallback reason if it's "Não informada" and no specific failure reason was captured
                           st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = "Localização exata baseada em coordenadas não obtida por nenhum método."
-                     # If we successfully got coordinates (geocodificacao_sucesso_coords is True),
-                     # this failure reason key should ideally not exist, but the logic above only sets it
-                     # if we ended up WITHOUT coordinates.
+
 
                 # Everything processed, advance to the IA analysis step
                 next_step()
@@ -1215,16 +1176,17 @@ elif st.session_state.step == 'collect_buraco_details':
 
 elif st.session_state.step == 'processing_ia':
     st.header("--- 🧠 Processamento Robótico de IA ---")
-    st.write("Por favor, aguarde enquanto o Krateras analisa os dados, a imagem (se houver) e gera o relatório com a inteligência do Google Gemini.")
+    st.write("Por favor, aguarde enquanto o Krateras analisa os dados (via texto) e gera o relatório com a inteligência do Google Gemini.")
+    st.info("ℹ️ A análise visual por IA está desativada nesta versão para otimização da estabilidade.")
 
     buraco_data = st.session_state.denuncia_completa.get('buraco', {})
     caracteristicas = buraco_data.get('caracteristicas_estruturadas', {})
     observacoes = buraco_data.get('observacoes_adicionais', '')
-    imagem_data = buraco_data.get('imagem_denuncia')
+    imagem_data = buraco_data.get('imagem_denuncia') # Mantém os dados da imagem carregada
 
     # Resetar resultados de IA antes de rodar para garantir que não estamos usando resultados de um rerun anterior sem dados
     st.session_state.denuncia_completa['insights_ia'] = {}
-    st.session_state.denuncia_completa['analise_imagem_ia'] = {}
+    # st.session_state.denuncia_completa['analise_imagem_ia'] = {} # REMOVIDO - Não haverá análise de imagem
     st.session_state.denuncia_completa['urgencia_ia'] = {}
     st.session_state.denuncia_completa['sugestao_acao_ia'] = {}
     st.session_state.denuncia_completa['resumo_ia'] = {}
@@ -1239,35 +1201,18 @@ elif st.session_state.step == 'processing_ia':
         )
     else:
         st.warning("⚠️ Modelo Google Gemini Text não inicializado. Análise de características/observações por IA desabilitada.")
-        st.session_state.denuncia_completa['insights_ia'] = {"insights": "Análise de características/observações via IA indisponível (Motor Gemini Text offline)."}
-
-
-    # Rodar análise de imagem (SE houver imagem E modelo de visão disponível)
-    if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
-        st.info("🤖 Analisando a imagem do buraco com Visão Robótica...")
-        # Passa os bytes e o tipo da imagem carregada
-        st.session_state.denuncia_completa['analise_imagem_ia'] = analisar_imagem_gemini(
-            imagem_data['bytes'],
-            imagem_data['type'],
-            st.session_state.gemini_vision_model
-        )
-    elif imagem_data and 'bytes' in imagem_data and not st.session_state.gemini_vision_model:
-        st.warning("⚠️ Imagem carregada, mas Modelo Google Gemini Vision não inicializado ou compatível. Análise visual por IA desabilitada.")
-        st.session_state.denuncia_completa['analise_imagem_ia'] = {"analise_imagem": "Análise visual por IA indisponível (Modelo Gemini Vision offline ou modelo incompatível)."}
-    elif not (imagem_data and 'bytes' in imagem_data):
-        st.info("ℹ️ Nenhuma imagem fornecida para análise visual por IA.")
-        st.session_state.denuncia_completa['analise_imagem_ia'] = {"analise_imagem": "Nenhuma imagem fornecida para análise."}
+        st.session_state.denuncia_completa['insights_ia'] = {"insights": "Análise de características/observações via IA indisponível."}
 
 
     # Rodar categorização de urgência
     # Certifica-se de passar os dados IA processados, mesmo que estejam vazios ou com erro
     current_insights = st.session_state.denuncia_completa.get('insights_ia', {})
-    current_analise_imagem = st.session_state.denuncia_completa.get('analise_imagem_ia', {})
+    # current_analise_imagem = st.session_state.denuncia_completa.get('analise_imagem_ia', {}) # REMOVIDO
     if st.session_state.gemini_model:
         st.session_state.denuncia_completa['urgencia_ia'] = categorizar_urgencia_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
             current_insights,
-            current_analise_imagem, # Passa análise de imagem (pode estar vazia)
+            # current_analise_imagem, # REMOVIDO
             st.session_state.gemini_model
         )
     else:
@@ -1280,7 +1225,7 @@ elif st.session_state.step == 'processing_ia':
         st.session_state.denuncia_completa['sugestao_acao_ia'] = sugerir_causa_e_acao_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
             current_insights,
-            current_analise_imagem, # Passa análise de imagem (pode estar vazia)
+            # current_analise_imagem, # REMOVIDO
             st.session_state.gemini_model
         )
     else:
@@ -1313,10 +1258,10 @@ elif st.session_state.step == 'show_report':
     endereco = buraco.get('endereco', {})
     caracteristicas = buraco.get('caracteristicas_estruturadas', {})
     observacoes = buraco.get('observacoes_adicionais', 'Nenhuma observação adicional fornecida.')
-    imagem_data = buraco.get('imagem_denuncia')
+    imagem_data = buraco.get('imagem_denuncia') # Dados da imagem
     localizacao_exata = dados_completos.get('localizacao_exata_processada', {})
     insights_ia = dados_completos.get('insights_ia', {})
-    analise_imagem_ia = dados_completos.get('analise_imagem_ia', {})
+    # analise_imagem_ia = dados_completos.get('analise_imagem_ia', {}) # REMOVIDO
     urgencia_ia = dados_completos.get('urgencia_ia', {})
     sugestao_acao_ia = dados_completos.get('sugestao_acao_ia', {})
     resumo_ia = dados_completos.get('resumo_ia', {})
@@ -1429,13 +1374,14 @@ elif st.session_state.step == 'show_report':
              st.info(f"ℹ️ Nota: Motivo da falha na geocodificação automática ou input manual sem coordenadas: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')}")
 
 
-    with st.expander("📷 Imagem da Denúncia", expanded=True):
+    with st.expander("📷 Imagem da Denúncia (Referência Visual)", expanded=True):
          if imagem_data and 'bytes' in imagem_data:
               try:
                    # Usar io.BytesIO para exibir a imagem a partir dos bytes
                    st.image(io.BytesIO(imagem_data['bytes']), caption=imagem_data.get('filename', 'Imagem Carregada'), use_column_width=True)
                    st.write(f"**Nome do Arquivo:** {imagem_data.get('filename', 'Não informado')}")
                    st.write(f"**Tipo:** {imagem_data.get('type', 'Não informado')}")
+                   st.info("Esta imagem é incluída no relatório para referência visual, mas não foi analisada automaticamente por IA nesta versão.")
               except Exception as e:
                    st.error(f"❌ Não foi possível exibir a imagem carregada: {e}")
          elif imagem_data and 'erro' in imagem_data:
@@ -1445,25 +1391,15 @@ elif st.session_state.step == 'show_report':
 
 
     st.markdown("---")
-    st.subheader("🤖 Análises Robóticas de IA (Google Gemini)")
+    st.subheader("🤖 Análises Robóticas de IA (Google Gemini Text)")
 
     if st.session_state.gemini_model:
         with st.expander("🧠 Análise de Características e Observações (IA Gemini)", expanded=True):
             st.write(insights_ia.get('insights', 'Análise não realizada ou com erro.'))
 
-        # Exibe a análise de imagem SOMENTE se um modelo de visão foi inicializado e uma imagem foi processada
-        # ou se houve um erro específico da análise de imagem que queremos reportar no expander.
-        analise_imagem_disponivel = analise_imagem_ia.get('analise_imagem')
-        if st.session_state.gemini_vision_model or (analise_imagem_disponivel and ('indisponível' in analise_imagem_disponivel.lower() or 'erro' in analise_imagem_disponivel.lower() or 'nenhuma imagem' in analise_imagem_disponivel.lower())):
-             with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True):
-                  st.write(analise_imagem_disponivel if analise_imagem_disponivel else 'Análise não realizada ou com erro desconhecido.')
-        elif imagem_data and 'bytes' in imagem_data:
-             # Se há imagem, mas não há resultado de análise (e não é um erro de indisponibilidade/nenhuma imagem registrado),
-             # assume que a análise foi tentada mas falhou de forma inesperada.
-             with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True):
-                  st.warning("⚠️ Análise Visual de Imagem não foi concluída com sucesso. Verifique o modelo Gemini Vision e a imagem.")
-                  st.write(analise_imagem_disponivel if analise_imagem_disponivel else 'Análise não iniciada ou falhou sem mensagem específica.')
-
+        # Expandir de análise de imagem removido.
+        # with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True): # REMOVIDO
+        #     st.write(analise_imagem_ia.get('analise_imagem', 'Análise não realizada ou com erro.')) # REMOVIDO
 
         with st.expander("🚦 Sugestão de Urgência (IA Gemini)", expanded=True):
             st.write(urgencia_ia.get('urgencia_ia', 'Sugestão de urgência não gerada ou com erro.'))
@@ -1475,7 +1411,7 @@ elif st.session_state.step == 'show_report':
         st.subheader("📜 Resumo Narrativo Inteligente (IA Gemini)")
         st.write(resumo_ia.get('resumo_ia', 'Resumo não gerado ou com erro.'))
     else:
-        st.warning("⚠️ Análises e Resumo da IA não disponíveis (Chave Google API KEY não configurada ou modelos não inicializados).")
+        st.warning("⚠️ Análises e Resumo da IA não disponíveis (Chave Google API KEY não configurada ou modelo de texto não inicializado).")
 
 
     st.markdown("---")
@@ -1484,7 +1420,7 @@ elif st.session_state.step == 'show_report':
     # Opção para reiniciar o processo
     if st.button("Iniciar Nova Denúncia"):
         # Limpa o estado da sessão para recomeçar (exceto as chaves API e modelos que são cache_resource)
-        keys_to_keep = ['api_keys_loaded', 'gemini_model', 'gemini_vision_model', 'geocoding_api_key']
+        keys_to_keep = ['api_keys_loaded', 'gemini_model', 'geocoding_api_key'] # Removido gemini_vision_model
         all_keys = list(st.session_state.keys())
         for key in all_keys:
             if key not in keys_to_keep:
