@@ -1,4 +1,5 @@
 streamlit
 requests
 google-generativeai
-pandas # Necessário para st.map
+pandas
+Pillow 
