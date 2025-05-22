@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v3.4 - Sistema de Diagnóstico e Resiliência de IA)
+Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v3.4.1 - Correção Sintaxe e Resiliência IA)
 
-Bem-vindo à versão aprimorada do Krateras, com foco em diagnósticos robustos
+Versão aprimorada do Krateras com correção de erro sintático e foco em diagnósticos robustos
 para as análises de IA e um fluxo de processamento mais transparente.
 
 Tecnologias: Python, Streamlit, Google Gemini API (Vision & Pro), Google Geocoding API, ViaCEP, Google Street View Static API, CSS Custom.
@@ -360,6 +360,7 @@ def init_gemini_models(api_key: Optional[str]) -> tuple[Optional[genai.Generativ
                  text_model_name = pref_model
                  break
 
+
         if text_model_name:
              model_pro = genai.GenerativeModel(text_model_name)
              success_messages.append(f"✅ Conexão com Google Gemini (Texto) estabelecida usando modelo '{text_model_name}'.")
@@ -579,10 +580,13 @@ def process_gemini_response(response: Any, context: str) -> str:
                   if hasattr(response.prompt_feedback, 'safety_ratings') and response.prompt_feedback.safety_ratings:
                        ratings = ", ".join([f"{r.category.name}: {r.probability.name}" for r in response.prompt_feedback.safety_ratings])
                        block_details = f" (Ratings: {ratings})"
+                  # Log block reason to console for debugging
+                  st.error(f"DEBUG: Blocked during {context}. Reason: {block_reason} {block_details}")
                   return f"❌ Análise bloqueada pelo filtro de segurança do Gemini durante a {context}. Motivo: {block_reason}{block_details}"
              elif hasattr(response.prompt_feedback, 'safety_ratings') and response.prompt_feedback.safety_ratings:
                   # Block occurred, but reason not explicitly set? Still report ratings.
                   ratings = ", ".join([f"{r.category.name}: {r.probability.name}" for r in response.prompt_feedback.safety_ratings])
+                  st.error(f"DEBUG: Blocked during {context}. No explicit reason, ratings: {ratings}")
                   return f"❌ Análise bloqueada pelo filtro de segurança do Gemini durante a {context} (sem motivo explícito, ratings: {ratings})."
 
 
@@ -597,15 +601,18 @@ def process_gemini_response(response: Any, context: str) -> str:
                   part_content = response.candidates[0].content.parts[0]
                   return str(part_content).strip()
              else:
+                  st.error(f"DEBUG: Gemini response has candidates but no text parts during {context}.")
                   return f"❌ A resposta do Gemini durante a {context} não contém texto processável, mas candidatos foram retornados."
         else:
              # This case means no text, no candidates, and no explicit prompt_feedback block
              # It could be an API error or other unexpected response structure
+             st.error(f"DEBUG: Gemini response has no content, candidates, or feedback during {context}. Response: {response}")
              return f"❌ A resposta do Gemini durante a {context} não contém conteúdo nem feedback de bloqueio. Resposta completa (estrutura): {response}" # Show response structure for debug
 
 
     except Exception as e:
         # Catch errors *during* processing the response object
+        st.error(f"DEBUG: Unexpected error processing Gemini response during {context}: {e}. Response was: {response}")
         return f"❌ Erro inesperado ao processar a resposta do Gemini durante a {context}: {e}. Resposta original: {response}" # Include original response object structure
 
 
@@ -636,7 +643,7 @@ def analyze_image_with_gemini_vision(image_bytes: bytes, image_type: str, model:
             "- Presença de água ou umidade",
             "- Condição do pavimento imediatamente ao redor (rachado, esfarelando, afundado, etc.)",
             "- Quaisquer objetos ou condições *visíveis* na imagem que possam indicar risco ou contexto (por exemplo, detritos na pista, desnível, localização aparente em via de tráfego, proximidade de faixa de pedestre).",
-            "Forneça uma análise textual concisa, factual e baseada EXCLUSIVAMENTE no conteúdo da imagem. Evite termos excessivamente dramáticos ou juízos de valor; descreva o que é visto de forma direta e útil para um engenheiro de manutenção de vias."
+            "Forneça uma análise textual concisa, factual e baseada EXCLUSIVAMENTE no conteúdo da imagem. Evite termos excessivamente dramáticos ou juízos de valor; descreva o que é visto de forma direta e útil para um engenheiro de manutenção de vias.", # <--- VÍRGULA ADICIONADA AQUI
             image_parts[0] # Adiciona a imagem ao prompt
         ]
 
@@ -677,7 +684,7 @@ def analisar_dados_com_gemini(_dados_denuncia_completa: Dict[str, Any], _model: 
              value = informed_structured_details.get(key)
              if value is not None: # Check if key exists and has a value
                   value_str = ", ".join(value) if isinstance(value, list) else value
-                  # Traduz as chaves para o prompt de forma mais amigável
+                  # Traduz as chaves para o prompt de forma mais amigável (manter consistência com os inputs)
                   key_translated = {
                       'tamanho': 'Tamanho Estimado',
                       'perigo': 'Nível de Risco Aparente (User)', # Especifica que é do usuário
@@ -789,8 +796,8 @@ def categorizar_urgencia_gemini(_dados_denuncia_completa: Dict[str, Any], _model
 
 
     # Remove error prefixes for the prompt
-    image_analysis_for_prompt = image_analysis_text if not image_analysis_text.startswith("❌") else f"Análise de imagem com erro: {image_analysis_text[2:]}"
-    insights_for_prompt = insights_text if not insights_text.startswith("❌") else f"Análise detalhada com erro: {insights_text[2:]}"
+    image_analysis_for_prompt = image_analysis_text if not image_analysis_text.startswith("❌") else f"Análise de imagem com erro: {image_analysis_text[2:].strip()}"
+    insights_for_prompt = insights_text if not insights_text.startswith("❌") else f"Análise detalhada com erro: {insights_text[2:].strip()}"
 
 
     prompt = f"""
@@ -864,8 +871,8 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia_completa: Dict[str, Any], _model
 
 
     # Remove error prefixes for the prompt
-    image_analysis_for_prompt = image_analysis_text if not image_analysis_text.startswith("❌") else f"Análise de imagem com erro: {image_analysis_text[2:]}"
-    insights_for_prompt = insights_text if not insights_text.startswith("❌") else f"Análise detalhada com erro: {insights_text[2:]}"
+    image_analysis_for_prompt = image_analysis_text if not image_analysis_text.startswith("❌") else f"Análise de imagem com erro: {image_analysis_text[2:].strip()}"
+    insights_for_prompt = insights_text if not insights_text.startswith("❌") else f"Análise detalhada com erro: {insights_text[2:].strip()}"
 
 
     prompt = f"""
@@ -979,7 +986,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     if image_analysis_for_prompt.startswith("❌"): image_analysis_for_prompt = f"Análise de imagem indisponível/com erro: {image_analysis_for_prompt[2:].strip()}"
 
     insights_for_prompt = insights_ia.get('insights', 'Não disponível.')
-    if insights_for_prompt.startswith("❌"): insights_for_prompt = f"Análise detalhada indisponível/com erro: {insights_for_prompt[2:].strip()}"
+    if insights_for_prompt.startswith("❌"): insights_for_prompt = f"Análise detalhada indisponível/com error: {insights_for_prompt[2:].strip()}"
 
     urgencia_for_prompt = urgencia_ia.get('urgencia_ia', 'Não disponível.')
     if urgencia_for_prompt.startswith("❌"): urgencia_for_prompt = f"Sugestão de urgência indisponível/com erro: {urgencia_for_prompt[2:].strip()}"
@@ -1081,11 +1088,14 @@ def prev_step():
 
 def force_rerun_ia_analysis():
      """Clears IA related results in session state to force re-computation by cached functions."""
-     st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": "Status Análise Imagem IA: Não iniciada."}
-     st.session_state.denuncia_completa['insights_ia'] = {"insights": "Status Análise Detalhada IA: Não iniciada."}
-     st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "Status Sugestão Urgência IA: Não iniciada."}
-     st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "Status Sugestões Causa/Ação IA: Não iniciada."}
-     st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "Status Geração Resumo IA: Não iniciada."}
+     # Clear cached results by making inputs differ
+     # The cached functions use the entire st.session_state.denuncia_completa dict as a key.
+     # Modifying the IA result keys will make the cache key different, forcing rerun.
+     st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": "Status Análise Imagem IA: Re-iniciada."}
+     st.session_state.denuncia_completa['insights_ia'] = {"insights": "Status Análise Detalhada IA: Re-iniciada."}
+     st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "Status Sugestão Urgência IA: Re-iniciada."}
+     st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "Status Sugestões Causa/Ação IA: Re-iniciada."}
+     st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "Status Geração Resumo IA: Re-iniciada."}
      # Note: Street View image and Geocoding results are also cached but might not need rerun unless location inputs change.
      # Forcing re-run of IA analysis implies re-running the processing step.
      st.session_state.step = 'processing_ia'
@@ -1112,7 +1122,7 @@ if not st.session_state.api_keys_loaded:
 
 if st.session_state.step == 'start':
     st.write("""
-    Olá! Krateras v3.4 entrando em órbita! Sua missão, caso aceite: denunciar buracos na rua
+    Olá! Krateras v3.4.1 entrando em órbita! Sua missão, caso aceite: denunciar buracos na rua
     para que possam ser consertados. A segurança dos seus dados e a precisão da denúncia
     são nossas prioridades máximas.
 
@@ -1140,7 +1150,7 @@ elif st.session_state.step == 'collect_denunciante':
     st.write("Sua contribuição é super valiosa! 💪")
 
     # Use unique keys for form inputs to prevent conflicts on reruns
-    with st.form("form_denunciante"):
+    with st.form("form_denunciante_v341"):
         # Initialize with empty strings if not in state
         # Access via .get with a default ensures keys exist even if denuncia_completa was just initialized empty
         denunciante_data = st.session_state.denuncia_completa.get('denunciante', {})
@@ -1148,9 +1158,9 @@ elif st.session_state.step == 'collect_denunciante':
         idade_initial = denunciante_data.get('idade', 30) # Default idade
         cidade_residencia_initial = denunciante_data.get('cidade_residencia', '')
 
-        nome = st.text_input("Seu nome completo:", value=nome_initial, key='nome_denunciante_input_v34')
-        idade = st.number_input("Sua idade (aproximada, se preferir, sem pressão 😉):", min_value=1, max_value=120, value=idade_initial, key='idade_denunciante_input_v34')
-        cidade_residencia = st.text_input("Em qual cidade você reside?:", value=cidade_residencia_initial, key='cidade_residencia_denunciante_input_v34')
+        nome = st.text_input("Seu nome completo:", value=nome_initial, key='nome_denunciante_input_v341')
+        idade = st.number_input("Sua idade (aproximada, se preferir, sem pressão 😉):", min_value=1, max_value=120, value=idade_initial, key='idade_denunciante_input_v341')
+        cidade_residencia = st.text_input("Em qual cidade você reside?:", value=cidade_residencia_initial, key='cidade_residencia_denunciante_input_v341')
 
         submitted = st.form_submit_button("Avançar (Dados Denunciante)")
 
@@ -1165,7 +1175,7 @@ elif st.session_state.step == 'collect_denunciante':
                 }
                 next_step()
 
-    st.button("Voltar", on_click=prev_step)
+    st.button("Voltar", on_click=prev_step, key='back_from_denunciante_v341')
 
 
 elif st.session_state.step == 'collect_buraco_address_method':
@@ -1185,21 +1195,13 @@ elif st.session_state.step == 'collect_buraco_address_method':
         "Escolha o método:",
         ('Digitar nome manualmente', 'Buscar por CEP'),
         index = initial_index,
-        key='endereco_method_radio_v34'
+        key='endereco_method_radio_v341'
     )
-
-    # Use a submit button for clarity in forms
-    with st.form("form_address_method"):
-         st.form_submit_button("Selecionar Método", use_container_width=True)
-
-    # Streamlit quirk: need to check which radio button was selected *after* form submit
-    # However, directly changing state/rerunning inside form submit block can be tricky.
-    # A simple button approach is often more reliable outside the form for navigation.
 
     # Let's use buttons *outside* the form for navigation clarity
     col_method1, col_method2 = st.columns(2)
     with col_method1:
-        if st.button("Selecionar e Continuar", key='select_method_btn_v34'):
+        if st.button("Selecionar Método e Continuar", key='select_method_btn_v341'):
              if opcao_localizacao == 'Digitar nome manualmente':
                   st.session_state.endereco_coletado_via = 'manual' # Guarda a forma como coletamos o endereço
                   st.session_state.step = 'collect_buraco_address_manual'
@@ -1209,7 +1211,7 @@ elif st.session_state.step == 'collect_buraco_address_method':
              st.rerun()
 
     with col_method2:
-        st.button("Voltar", on_click=prev_step)
+        st.button("Voltar", on_click=prev_step, key='back_from_method_v341')
 
 
 elif st.session_state.step == 'collect_buraco_address_cep':
@@ -1220,10 +1222,10 @@ elif st.session_state.step == 'collect_buraco_address_cep':
     if 'buraco' not in st.session_state.denuncia_completa:
         st.session_state.denuncia_completa['buraco'] = {}
 
-    with st.form("form_cep"):
-        # Use um placeholder se veio do manual com CEP, ou vazio se for a primeira vez no CEP
+    with st.form("form_cep_v341"):
+        # Use an initial value from state, or empty if not found
         initial_cep = st.session_state.denuncia_completa['buraco'].get('cep_informado', '')
-        cep_input = st.text_input("Digite o CEP (apenas números):", value=initial_cep, max_chars=8, key='cep_buraco_input_v34')
+        cep_input = st.text_input("Digite o CEP (apenas números):", value=initial_cep, max_chars=8, key='cep_buraco_input_v341')
         buscar_button = st.form_submit_button("Buscar CEP")
 
         # Reset search state vars if form is submitted (new search attempt)
@@ -1266,14 +1268,14 @@ elif st.session_state.step == 'collect_buraco_address_cep':
                      st.rerun()
 
 
-    # Display action buttons only if a search attempt was made
-    if 'cep_buraco_input_v34' in st.session_state: # Check if the form has been rendered
+    # Display action buttons only if a search attempt was made or user came back here
+    if 'cep_buraco_input_v341' in st.session_state: # Check if the form has been rendered
         col_cep_actions1, col_cep_actions2 = st.columns(2)
         if st.session_state.get('dados_cep_validos'): # If CEP data was found and is valid
             with col_cep_actions1:
-                 st.button("Confirmar Endereço e Avançar", on_click=next_step, key='confirm_cep_advance_v34')
+                 st.button("Confirmar Endereço e Avançar", on_click=next_step, key='confirm_cep_advance_v341')
             with col_cep_actions2:
-                 if st.button("Corrigir Endereço Manualmente", key='correct_cep_manual_v34'):
+                 if st.button("Corrigir Endereço Manualmente", key='correct_cep_manual_v341'):
                       st.session_state.endereco_coletado_via = 'manual'
                       # Basic address from CEP is already in state for the manual form
                       st.session_state.step = 'collect_buraco_address_manual'
@@ -1284,19 +1286,19 @@ elif st.session_state.step == 'collect_buraco_address_cep':
              # No "Try again by CEP" button needed; user can just modify the input and click "Buscar CEP" again.
              col_cep_error1, col_cep_error2 = st.columns(2)
              with col_cep_error1:
-                  if st.button("Digitar endereço manualmente", key='manual_after_cep_error_v34'):
+                  if st.button("Digitar endereço manualmente", key='manual_after_cep_error_v341'):
                        st.session_state.endereco_coletado_via = 'manual'
                        # Preserve CEP input if user switches to manual after error
                        # Basic address might be empty if CEP search failed completely, which is fine for manual input
                        st.session_state.step = 'collect_buraco_address_manual'
                        st.rerun()
              with col_cep_error2:
-                  st.button("Voltar", on_click=prev_step, key='back_from_cep_error_v34')
-        else: # If the form was just rendered, but no search attempted yet
-             st.button("Voltar", on_click=prev_step, key='back_from_cep_no_search_v34')
+                  st.button("Voltar", on_click=prev_step, key='back_from_cep_error_v341')
+        else: # If the form was just rendered, but no search attempted yet, or user came back here
+             st.button("Voltar", on_click=prev_step, key='back_from_cep_no_search_v341')
 
-    else: # Initial page load, form not yet rendered
-         st.button("Voltar", on_click=prev_step, key='back_from_cep_initial_v34')
+    else: # Initial page load, form not yet rendered (shouldn't happen with navigation flow)
+         st.button("Voltar", on_click=prev_step, key='back_from_cep_initial_v341')
 
 
 
@@ -1313,11 +1315,11 @@ elif st.session_state.step == 'collect_buraco_address_manual':
     # Use data from state for initial values
     endereco_initial = st.session_state.denuncia_completa['buraco'].get('endereco', {})
 
-    with st.form("form_manual_address"):
-        rua_manual = st.text_input("Nome completo da rua:", value=endereco_initial.get('rua', ''), key='rua_manual_buraco_input_v34')
-        bairro_manual = st.text_input("Bairro onde está o buraco (opcional):", value=endereco_initial.get('bairro', ''), key='bairro_manual_buraco_input_v34')
-        cidade_manual = st.text_input("Cidade onde está o buraco:", value=endereco_initial.get('cidade_buraco', ''), key='cidade_manual_buraco_input_v34')
-        estado_manual = st.text_input("Estado (UF) onde está o buraco:", value=endereco_initial.get('estado_buraco', ''), max_chars=2, key='estado_manual_buraco_input_v34')
+    with st.form("form_manual_address_v341"):
+        rua_manual = st.text_input("Nome completo da rua:", value=endereco_initial.get('rua', ''), key='rua_manual_buraco_input_v341')
+        bairro_manual = st.text_input("Bairro onde está o buraco (opcional):", value=endereco_initial.get('bairro', ''), key='bairro_manual_buraco_input_v341')
+        cidade_manual = st.text_input("Cidade onde está o buraco:", value=endereco_initial.get('cidade_buraco', ''), key='cidade_manual_buraco_input_v341')
+        estado_manual = st.text_input("Estado (UF) onde está o buraco:", value=endereco_initial.get('estado_buraco', ''), max_chars=2, key='estado_manual_buraco_input_v341')
 
         submitted = st.form_submit_button("Avançar (Endereço Manual)")
 
@@ -1336,7 +1338,7 @@ elif st.session_state.step == 'collect_buraco_address_manual':
                 # st.session_state.denuncia_completa['buraco']['cep_informado'] is already set if user came from CEP step
                 next_step() # Move to the next step (collect details + photo + exact location)
 
-    st.button("Voltar", on_click=prev_step)
+    st.button("Voltar", on_click=prev_step, key='back_from_manual_address_v341')
 
 
 elif st.session_state.step == 'collect_buraco_details':
@@ -1363,16 +1365,17 @@ elif st.session_state.step == 'collect_buraco_details':
     if 'localizacao_manual_input' not in st.session_state: st.session_state.localizacao_manual_input = ''
 
 
-    with st.form("form_buraco_details_structured"):
+    with st.form("form_buraco_details_structured_v341"):
 
         # Initial values from state
-        initial_tamanho = st.session_state.denuncia_completa['buraco']['structured_details'].get('tamanho', 'Não Informado')
-        initial_profundidade = st.session_state.denuncia_completa['buraco']['structured_details'].get('profundidade', 'Não Informado')
-        initial_agua = st.session_state.denuncia_completa['buraco']['structured_details'].get('presenca_agua', 'Não Informado')
-        initial_perigo = st.session_state.denuncia_completa['buraco']['structured_details'].get('perigo', 'Não Informado')
-        initial_contexto = st.session_state.denuncia_completa['buraco']['structured_details'].get('contexto', 'Não Informado')
-        initial_perigos_detalhados = st.session_state.denuncia_completa['buraco']['structured_details'].get('perigos_detalhados', [])
-        initial_identificadores = st.session_state.denuncia_completa['buraco']['structured_details'].get('identificadores_visuais', '')
+        initial_structured_details = st.session_state.denuncia_completa['buraco']['structured_details']
+        initial_tamanho = initial_structured_details.get('tamanho', 'Não Informado')
+        initial_profundidade = initial_structured_details.get('profundidade', 'Não Informado')
+        initial_agua = initial_structured_details.get('presenca_agua', 'Não Informado')
+        initial_perigo = initial_structured_details.get('perigo', 'Não Informado')
+        initial_contexto = initial_structured_details.get('contexto', 'Não Informado')
+        initial_perigos_detalhados = initial_structured_details.get('perigos_detalhados', [])
+        initial_identificadores = initial_structured_details.get('identificadores_visuais', '')
         initial_numero_proximo = st.session_state.denuncia_completa['buraco'].get('numero_proximo', '')
         initial_lado_rua = st.session_state.denuncia_completa['buraco'].get('lado_rua', '')
         initial_observacoes = st.session_state.denuncia_completa['buraco'].get('observacoes_adicionais', '')
@@ -1383,62 +1386,68 @@ elif st.session_state.step == 'collect_buraco_details':
         col1, col2 = st.columns(2)
 
         with col1:
+            tamanho_options = ['Não Informado', 'Pequeno (Cabe uma bola de futebol)', 'Médio (Cabe um pneu de carro)', 'Grande (Cabe uma pessoa sentada)', 'Enorme (Cobre a faixa)', 'Crítico (Cratera, afeta múltiplos veículos)']
             tamanho = st.radio(
                 "**Tamanho Estimado:**",
-                ['Não Informado', 'Pequeno (Cabe uma bola de futebol)', 'Médio (Cabe um pneu de carro)', 'Grande (Cabe uma pessoa sentada)', 'Enorme (Cobre a faixa)', 'Crítico (Cratera, afeta múltiplos veículos)'],
-                index=['Não Informado', 'Pequeno (Cabe uma bola de futebol)', 'Médio (Cabe um pneu de carro)', 'Grande (Cabe uma pessoa sentada)', 'Enorme (Cobre a faixa)', 'Crítico (Cratera, afeta múltiplos veículos)'].index(initial_tamanho),
-                key='tamanho_buraco_v34'
+                tamanho_options,
+                index=tamanho_options.index(initial_tamanho),
+                key='tamanho_buraco_v341'
             )
+            profundidade_options = ['Não Informado', 'Raso (Dá um susto, não danifica)', 'Médio (Pode furar pneu ou danificar suspensão)', 'Fundo (Causa dano considerável, pode entortar roda)', 'Muito Fundo (Causa acidentes graves, imobiliza veículo)']
             profundidade = st.radio(
                 "**Profundidade Estimada:**",
-                ['Não Informado', 'Raso (Dá um susto, não danifica)', 'Médio (Pode furar pneu ou danificar suspensão)', 'Fundo (Causa dano considerável, pode entortar roda)', 'Muito Fundo (Causa acidentes graves, imobiliza veículo)'],
-                index=['Não Informado', 'Raso (Dá um susto, não danifica)', 'Médio (Pode furar pneu ou danificar suspensão)', 'Fundo (Causa dano considerável, pode entortar roda)', 'Muito Fundo (Causa acidentes graves, imobiliza veículo)'].index(initial_profundidade),
-                key='profundidade_buraco_v34'
+                profundidade_options,
+                index=profundidade_options.index(initial_profundidade),
+                key='profundidade_buraco_v341'
             )
+            presenca_agua_options = ['Não Informado', 'Sim (Acumula água)', 'Não (Está seco)']
             presenca_agua = st.radio(
                  "**Presença de Água/Alagamento:**",
-                 ['Não Informado', 'Sim (Acumula água)', 'Não (Está seco)'],
-                 index=['Não Informado', 'Sim (Acumula água)', 'Não (Está seco)'].index(initial_agua),
-                 key='agua_buraco_v34'
+                 presenca_agua_options,
+                 index=presenca_agua_options.index(initial_agua),
+                 key='agua_buraco_v341'
             )
 
         with col2:
+             perigo_options = ['Não Informado', 'Baixo (Principalmente estético)', 'Médio (Pode causar dano menor)', 'Alto (Risco de acidente sério ou dano significativo)', 'Altíssimo (Risco grave e iminente, acidentes frequentes)']
              perigo = st.radio(
-                 "**Nível de Risco Aparente:**", # Ajustado para "Risco"
-                 ['Não Informado', 'Baixo (Principalmente estético)', 'Médio (Pode causar dano menor)', 'Alto (Risco de acidente sério ou dano significativo)', 'Altíssimo (Risco grave e iminente, acidentes frequentes)'],
-                 index=['Não Informado', 'Baixo (Principalmente estético)', 'Médio (Pode causar dano menor)', 'Alto (Risco de acidente sério ou dano significativo)', 'Altíssimo (Risco grave e iminente, acidentes frequentes)'].index(initial_perigo),
-                 key='perigo_buraco_v34' # Key remains for consistency with previous data
+                 "**Nível de Risco Aparente:**",
+                 perigo_options,
+                 index=perigo_options.index(initial_perigo),
+                 key='perigo_buraco_v341'
              )
+             contexto_options = ['Não Informado', 'Via de Alto Tráfego', 'Via de Baixo Tráfego', 'Perto de Escola/Hospital', 'Em Curva', 'Na Esquina', 'Em Subida/Descida', 'Pouca Iluminação', 'Problema Recorrente', 'Obra Recente na Região']
              contexto = st.selectbox(
                  "**Contexto ou Histórico do Local:**",
-                 ['Não Informado', 'Via de Alto Tráfego', 'Via de Baixo Tráfego', 'Perto de Escola/Hospital', 'Em Curva', 'Na Esquina', 'Em Subida/Descida', 'Pouca Iluminação', 'Problema Recorrente', 'Obra Recente na Região'],
-                 index=['Não Informado', 'Via de Alto Tráfego', 'Via de Baixo Tráfego', 'Perto de Escola/Hospital', 'Em Curva', 'Na Esquina', 'Em Subida/Descida', 'Pouca Iluminação', 'Problema Recorrente', 'Obra Recente na Região'].index(initial_contexto),
-                 key='contexto_buraco_v34'
+                 contexto_options,
+                 index=contexto_options.index(initial_contexto),
+                 key='contexto_buraco_v341'
              )
+             perigos_detalhados_options = ['Risco para Carros (Pneu/Suspensão/Roda)', 'Risco para Motos/Bikes', 'Risco para Pedestres', 'Dificulta Desvio', 'Perigoso à Noite', 'Perigoso na Chuva', 'Causa Lentidão no Trânsito', 'Já Causou Acidentes (Se souber)']
              perigos_detalhados = st.multiselect(
-                 "**Fatores de Risco e Impactos Detalhados (Selecione todos que se aplicam):**", # Ajustado para "Fatores de Risco e Impactos"
-                 ['Risco para Carros (Pneu/Suspensão/Roda)', 'Risco para Motos/Bikes', 'Risco para Pedestres', 'Dificulta Desvio', 'Perigoso à Noite', 'Perigoso na Chuva', 'Causa Lentidão no Trânsito', 'Já Causou Acidentes (Se souber)'],
+                 "**Fatores de Risco e Impactos Detalhados (Selecione todos que se aplicam):**",
+                 perigos_detalhados_options,
                  default=initial_perigos_detalhados,
-                 key='perigos_detalhados_buraco_v34' # Key remains
+                 key='perigos_detalhados_buraco_v341'
              )
 
 
         identificadores_visuais = st.text_input(
              "**Identificadores Visuais Adicionais Próximos (Ex: Em frente ao poste X, perto da árvore Y):**",
              value=initial_identificadores,
-             key='identificadores_visuais_buraco_v34'
+             key='identificadores_visuais_buraco_v341'
         )
 
         # This input is crucial for Geocoding and location
         numero_proximo = st.text_input(
              "**Número do imóvel mais próximo ou ponto de referência (ESSENCIAL para precisão! Ex: 'Em frente ao 123', 'Esquina c/ Rua X'):**",
              value=initial_numero_proximo,
-             key='numero_proximo_buraco_v34'
+             key='numero_proximo_buraco_v341'
         )
         lado_rua = st.text_input(
              "**Lado da rua onde está o buraco (Ex: 'lado par', 'lado ímpar', 'lado direito', 'lado esquerdo'):**",
              value=initial_lado_rua,
-             key='lado_rua_buraco_v34'
+             key='lado_rua_buraco_v341'
         )
 
 
@@ -1447,7 +1456,7 @@ elif st.session_state.step == 'collect_buraco_details':
         observacoes_adicionais = st.text_area(
             "Qualquer outra informação relevante sobre o buraco ou o local (Histórico, chuva recente, etc.):",
             value=initial_observacoes,
-            key='observacoes_adicionais_buraco_v34'
+            key='observacoes_adicionais_buraco_v341'
         )
 
         st.markdown("---")
@@ -1455,7 +1464,8 @@ elif st.session_state.step == 'collect_buraco_details':
         st.write("Anexe uma foto nítida do buraco (JPG, PNG). A IA Gemini Vision pode analisar a imagem para complementar a denúncia!")
         st.info("💡 Dica: Tire a foto de um ângulo que mostre o tamanho e profundidade do buraco, e também inclua um pouco do entorno (calçada, postes, referências) para ajudar a IA e as equipes de reparo a localizarem.")
 
-        uploaded_image = st.file_uploader("Escolha uma imagem...", type=["jpg", "jpeg", "png"], key='uploader_buraco_image_v34')
+        # File uploader handles both upload and displaying info about the uploaded file
+        uploaded_image = st.file_uploader("Escolha uma imagem...", type=["jpg", "jpeg", "png"], key='uploader_buraco_image_v341')
 
         # Handle image upload and display
         if uploaded_image is not None:
@@ -1499,7 +1509,7 @@ elif st.session_state.step == 'collect_buraco_details':
         localizacao_manual_input = st.text_input(
              "Alternativamente, ou para corrigir a Geocodificação, insira COORDENADAS (Lat,Long), LINK do Maps com Coordenadas, OU DESCRIÇÃO Detalhada EXATA:",
              value=initial_localizacao_manual,
-             key='localizacao_manual_input_v34' # Using a new key suffix
+             key='localizacao_manual_input_v341'
         )
 
 
@@ -1514,6 +1524,7 @@ elif st.session_state.step == 'collect_buraco_details':
 
             # Store the manual location input value regardless of what it is
             st.session_state.localizacao_manual_input = localizacao_manual_input.strip() # Update the state variable
+
 
             # Armazena os detalhes estruturados e observações no dicionário buraco
             st.session_state.denuncia_completa['buraco'].update({
@@ -1535,7 +1546,7 @@ elif st.session_state.step == 'collect_buraco_details':
             st.subheader("Processando Localização Exata...")
 
             # Reset processed location data and Street View data BEFORE processing
-            st.session_state.denuncia_completa['localizacao_exata_processada'] = {"tipo": "Não informada", "motivo_falha_geocodificacao_anterior": "Não tentada/aplicável", "input_original": ""} # Clear previous result
+            st.session_state.denuncia_completa['localizacao_exata_processada'] = {"tipo": "Não informada", "motivo_falha_geocodificacao_anterior": "Não tentada/aplicável", "input_original": st.session_state.localizacao_manual_input} # Clear previous result, keep the manual input
             st.session_state.streetview_image_data = {"erro": "Status Street View: Processando..."} # Indicate processing started
 
 
@@ -1543,7 +1554,7 @@ elif st.session_state.step == 'collect_buraco_details':
             lon_final: Optional[float] = None
             link_maps_final: Optional[str] = None
             embed_link_final: Optional[str] = None
-            geocoding_attempt_error = "Não tentada/aplicável" # Default error message
+            geocoding_attempt_error = "Não tentada/aplicável (Chave ou dados insuficientes)" # Default error message
 
 
             # --- Tentar Geocodificação Automática Primeiro ---
@@ -1571,15 +1582,14 @@ elif st.session_state.step == 'collect_buraco_details':
                     lon_final = geo_resultado['longitude']
                     link_maps_final = geo_resultado['google_maps_link_gerado']
                     embed_link_final = geo_resultado.get('google_embed_link_gerado')
-                    # Store successful geocoding result
-                    st.session_state.denuncia_completa['localizacao_exata_processada'] = {
+                    # Store successful geocoding result temporarily
+                    processed_geo_result = {
                         "tipo": "Geocodificada (API)",
                         "latitude": lat_final,
                         "longitude": lon_final,
                         "endereco_formatado_api": geo_resultado.get('endereco_formatado_api', ''),
                         "google_maps_link_gerado": link_maps_final,
                         "google_embed_link_gerado": embed_link_final,
-                         "input_original": st.session_state.localizacao_manual_input, # Keep manual input value here too
                          "motivo_falha_geocodificacao_anterior": "Sucesso na Geocodificação automática." # Record success
                     }
                     st.success("✅ Localização Obtida (via Geocodificação Automática)!")
@@ -1597,11 +1607,7 @@ elif st.session_state.step == 'collect_buraco_details':
             # --- Processar Localização Manual (if provided) ---
             input_original_manual = st.session_state.localizacao_manual_input # Already stripped above
 
-            # Process manual input ONLY IF it was provided AND geocoding wasn't successful
-            # If geocoding was successful, we prioritize its result unless manual input provides valid coords/link
-            # Let's refine: Manual input WITH valid coords/link OVERRIDES geocoding if provided.
-            # If manual input is just text OR empty, geocoding attempt result stands.
-
+            # Process manual input ONLY IF it was provided
             lat_manual: Optional[float] = None
             lon_manual: Optional[float] = None
             tipo_manual_processado = "Descrição Manual Detalhada" # Default type if no coords found in manual input
@@ -1656,6 +1662,7 @@ elif st.session_state.step == 'collect_buraco_details':
 
 
             # --- Determine FINAL Location Data ---
+            # Prioritize manual coordinates/link if found, otherwise use geocoding result if successful, otherwise use manual description if provided, otherwise mark as not found.
             if lat_manual is not None and lon_manual is not None:
                  # Manual input with valid coords/link overrides geocoding result (if any)
                  lat_final = lat_manual
@@ -1665,49 +1672,46 @@ elif st.session_state.step == 'collect_buraco_details':
                  # Attempt to generate embed link ONLY if Geocoding API key is available
                  embed_link_final = f"https://www.google.com/maps/embed/v1/place?key={st.session_state.geocoding_api_key}&q={lat_final},{lon_final}" if st.session_state.geocoding_api_key else None
 
-                 st.session_state.denuncia_completa['localizacao_exata_processada'] = {
+                 st.session_state.denuncia_completa['localizacao_exata_processada'].update({
                       "tipo": tipo_manual_processado, # Will be Coordenadas... or Coordenadas Extraídas...
-                      "input_original": input_original_manual,
                       "latitude": lat_final,
                       "longitude": lon_final,
                       "google_maps_link_gerado": link_maps_final,
                       "google_embed_link_gerado": embed_link_final,
                       "motivo_falha_geocodificacao_anterior": geocoding_attempt_error # Still record if geocoding failed
-                 }
+                 })
                  if st.session_state.geocoding_api_key and embed_link_final is None:
                       st.warning("⚠️ Não foi possível gerar o link Google Maps Embed com a chave fornecida. Verifique se a 'Maps Embed API' está habilitada e autorizada para sua chave no Google Cloud.")
                  elif not st.session_state.geocoding_api_key:
                       st.info("ℹ️ Chave de API de Geocodificação/Embed não fornecida. Link Google Maps Embed não gerado.")
                  # Success message for manual coord/link processing is implicit via st.info above
 
+            elif 'processed_geo_result' in locals(): # Check if geocoding was successful and stored in local var
+                 # Geocoding was successful, and manual input was empty or unusable as coords/link.
+                 st.session_state.denuncia_completa['localizacao_exata_processada'].update(processed_geo_result)
+                 st.session_state.denuncia_completa['localizacao_exata_processada']['input_original'] = input_original_manual # Store the manual input value
+
             elif input_original_manual:
                  # Manual input provided, but no coordinates/link detected. Treat as description.
                  # This only happens if geocoding failed or wasn't attempted.
-                 st.session_state.denuncia_completa['localizacao_exata_processada'] = {
+                 st.session_state.denuncia_completa['localizacao_exata_processada'].update({
                       "tipo": "Descrição Manual Detalhada",
-                      "input_original": input_original_manual,
                       "descricao_manual": input_original_manual,
                       "motivo_falha_geocodificacao_anterior": geocoding_attempt_error # Record geocoding attempt error
-                 }
+                 })
                  st.warning("⚠️ Nenhuma localização exata estruturada (coordenadas ou link) foi detectada no input manual. O relatório dependerá apenas dos detalhes estruturados, observações e endereço base.")
-
-            elif lat_final is not None and lon_final is not None:
-                 # Geocoding was successful AND manual input was empty or unusable as coords/link.
-                 # The result from the successful geocoding is already stored in st.session_state.denuncia_completa['localizacao_exata_processada'].
-                 # Just ensure the input_original is stored if it was empty, and the geo error is cleared/marked as success.
-                 st.session_state.denuncia_completa['localizacao_exata_processada']['input_original'] = input_original_manual # Store the empty manual input
-                 st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = "Sucesso na Geocodificação automática." # Ensure success is marked
-
 
             else:
                  # Geocoding failed/skipped AND manual input was empty.
                  st.warning("⚠️ Nenhuma localização exata foi obtida (Geocodificação falhou ou não tentada, e input manual estava vazio). O relatório dependerá apenas dos detalhes estruturados, observações e endereço base.")
                  # The reason for geocoding failure is already stored in geocoding_attempt_error variable.
-                 st.session_state.denuncia_completa['localizacao_exata_processada'] = {
+                 st.session_state.denuncia_completa['localizacao_exata_processada'].update({
                       "tipo": "Não informada",
-                      "input_original": input_original_manual,
                       "motivo_falha_geocodificacao_anterior": geocoding_attempt_error
-                 }
+                 })
+
+            # Ensure input_original is always stored
+            st.session_state.denuncia_completa['localizacao_exata_processada']['input_original'] = input_original_manual
 
 
             # --- Obter Imagem Street View (se houver coordenadas e chave) ---
@@ -1726,9 +1730,9 @@ elif st.session_state.step == 'collect_buraco_details':
                           api_key_for_sv
                           # Default size "600x400", heading 0 (North)
                       )
-                 if 'image_bytes' in st.session_state.streetview_image_data:
+                 if st.session_state.streetview_image_data and 'image_bytes' in st.session_state.streetview_image_data:
                       st.success("✅ Imagem Street View obtida com sucesso!")
-                 elif 'erro' in st.session_state.streetview_image_data:
+                 elif st.session_state.streetview_image_data and 'erro' in st.session_state.streetview_image_data:
                       st.warning(f"⚠️ Falha ao obter imagem Street View: {st.session_state.streetview_image_data['erro']}")
                       # Note: Street View Static API needs to be enabled in Google Cloud Console.
                       if "not authorized" in st.session_state.streetview_image_data['erro'].lower() or "forbidden" in st.session_state.streetview_image_data['erro'].lower():
@@ -1741,13 +1745,15 @@ elif st.session_state.step == 'collect_buraco_details':
             elif lat_for_sv is None or lon_for_sv is None:
                  st.info("ℹ️ Coordenadas exatas não disponíveis. Imagem Street View não pode ser obtida.")
                  st.session_state.streetview_image_data = {"erro": "Coordenadas exatas não disponíveis."}
-            # Else: streetview_image_data remains as initialized "Status Street View: Processando..." or previous error if it was already set.
+            else: # Fallback if status wasn't explicitly set
+                 st.session_state.streetview_image_data = {"erro": "Status Street View: Não processado ou sem resultado específico registrado."}
+
 
             # Now that location, Street View, and user image were processed/collected,
             # advance to the IA processing step.
             next_step()
 
-    st.button("Voltar", on_click=prev_step)
+    st.button("Voltar", on_click=prev_step, key='back_from_details_v341')
 
 
 elif st.session_state.step == 'processing_ia':
@@ -1761,43 +1767,58 @@ elif st.session_state.step == 'processing_ia':
 
     if not ia_available:
          st.warning("⚠️ Nenhuma análise de IA será executada (Modelos Gemini não configurados ou indisponíveis).")
-         st.button("Avançar para o Relatório (Sem IA)", on_click=next_step)
-         st.button("Voltar", on_click=prev_step)
+         st.button("Avançar para o Relatório (Sem IA)", on_click=next_step, key='skip_ia_button_v341')
+         st.button("Voltar", on_click=prev_step, key='back_from_processing_noia_v341')
          st.stop() # Stop execution if no IA is possible
 
 
     # Define the processing order and check if each step needs to run based on current state
     processing_queue = []
+    ia_results_keys = ['image_analysis_ia', 'insights_ia', 'urgencia_ia', 'sugestao_acao_ia', 'resumo_ia'] # Keys to check status
 
     # 1. Image Analysis
-    if gemini_vision_available and st.session_state.get('uploaded_image_bytes') and \
-       st.session_state.denuncia_completa['image_analysis_ia'].get('image_analysis', '').startswith('Status Análise Imagem IA:'): # Only run if model, image available, and not already done/failed
+    # Check if vision is available, image is uploaded, and analysis hasn't been done/failed in a previous run
+    img_analysis_status = st.session_state.denuncia_completa.get('image_analysis_ia', {}).get('image_analysis', 'Status Análise Imagem IA: Não iniciada.')
+    if gemini_vision_available and st.session_state.get('uploaded_image_bytes') and img_analysis_status.startswith('Status Análise Imagem IA:'):
          processing_queue.append('image_analysis')
     elif not gemini_vision_available:
-         st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": "🤖 Análise de imagem via IA indisponível (Motor Gemini Vision offline ou não configurado)."}
-    elif not st.session_state.get('uploaded_image_bytes'):
-         st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": "🔍 Nenhuma imagem fornecida pelo usuário para análise de IA."}
+         if img_analysis_status.startswith('Status Análise Imagem IA:'): # Avoid overwriting a specific failure from a previous run
+             st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": "🤖 Análise de imagem via IA indisponível (Motor Gemini Vision offline ou não configurado)."}
+    elif st.session_state.get('uploaded_image_bytes') is None:
+         if img_analysis_status.startswith('Status Análise Imagem IA:'): # Avoid overwriting a specific failure
+             st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": "🔍 Nenhuma imagem fornecida pelo usuário para análise de IA."}
 
 
     # 2. Text Analyses (depend on Pro model)
     if gemini_pro_available:
          # Detailed Analysis
-         if st.session_state.denuncia_completa['insights_ia'].get('insights', '').startswith('Status Análise Detalhada IA:'):
+         insights_status = st.session_state.denuncia_completa.get('insights_ia', {}).get('insights', 'Status Análise Detalhada IA: Não iniciada.')
+         if insights_status.startswith('Status Análise Detalhada IA:'):
               processing_queue.append('detailed_analysis')
-         # Urgency, Cause/Action, and Summary depend on detailed analysis conceptually, queue after.
-         # Check their own statuses to avoid re-running if already done.
-         if st.session_state.denuncia_completa['urgencia_ia'].get('urgencia_ia', '').startswith('Status Sugestão Urgência IA:'):
+
+         # Urgency, Cause/Action, and Summary checks
+         urgency_status = st.session_state.denuncia_completa.get('urgencia_ia', {}).get('urgencia_ia', 'Status Sugestão Urgência IA: Não iniciada.')
+         if urgency_status.startswith('Status Sugestão Urgência IA:'):
               processing_queue.append('urgency_suggestion')
-         if st.session_state.denuncia_completa['sugestao_acao_ia'].get('sugestao_acao_ia', '').startswith('Status Sugestões Causa/Ação IA:'):
+
+         action_status = st.session_state.denuncia_completa.get('sugestao_acao_ia', {}).get('sugestao_acao_ia', 'Status Sugestões Causa/Ação IA: Não iniciada.')
+         if action_status.startswith('Status Sugestões Causa/Ação IA:'):
               processing_queue.append('action_suggestion')
-         if st.session_state.denuncia_completa['resumo_ia'].get('resumo_ia', '').startswith('Status Geração Resumo IA:'):
+
+         summary_status = st.session_state.denuncia_completa.get('resumo_ia', {}).get('resumo_ia', 'Status Geração Resumo IA: Não iniciada.')
+         if summary_status.startswith('Status Geração Resumo IA:'):
               processing_queue.append('summary_generation')
+
     else:
-         # Set all text analysis statuses to unavailable if Pro model is missing
-         st.session_state.denuncia_completa['insights_ia'] = {"insights": "🤖 Análise detalhada via IA indisponível (Motor Gemini Texto offline ou não configurado)."}
-         st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "🤖 Sugestão de urgência via IA indisponível (Motor Gemini Texto offline ou não configurado)."}
-         st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "🤖 Sugestões de causa/ação via IA indisponíveis (Motor Gemini Texto offline ou não configurado)."}
-         st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "🤖 Resumo inteligente via IA indisponível (Motor Gemini Texto offline ou não configurado)."}
+         # Set all text analysis statuses to unavailable if Pro model is missing, unless they already show a specific error
+         if st.session_state.denuncia_completa.get('insights_ia', {}).get('insights', '').startswith('Status Análise Detalhada IA:'):
+              st.session_state.denuncia_completa['insights_ia'] = {"insights": "🤖 Análise detalhada via IA indisponível (Motor Gemini Texto offline ou não configurado)."}
+         if st.session_state.denuncia_completa.get('urgencia_ia', {}).get('urgencia_ia', '').startswith('Status Sugestão Urgência IA:'):
+              st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "🤖 Sugestão de urgência via IA indisponível (Motor Gemini Texto offline ou não configurado)."}
+         if st.session_state.denuncia_completa.get('sugestao_acao_ia', {}).get('sugestao_acao_ia', '').startswith('Status Sugestões Causa/Ação IA:'):
+              st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "🤖 Sugestões de causa/ação via IA indisponíveis (Motor Gemini Texto offline ou não configurado)."}
+         if st.session_state.denuncia_completa.get('resumo_ia', {}).get('resumo_ia', '').startswith('Status Geração Resumo IA:'):
+              st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "🤖 Resumo inteligente via IA indisponível (Motor Gemini Texto offline ou não configurado)."}
 
 
     # Execute processing steps in order
@@ -1816,8 +1837,10 @@ elif st.session_state.step == 'processing_ia':
                            st.session_state.uploaded_image_type,
                            st.session_state.gemini_vision_model
                        )
-                       if st.session_state.denuncia_completa['image_analysis_ia'].get('image_analysis', '').startswith("❌"):
-                            status_placeholder.error(f"❌ Análise de Imagem Falhou: {st.session_state.denuncia_completa['image_analysis_ia']['image_analysis']}")
+                       # Check the result and update placeholder
+                       result_text = st.session_state.denuncia_completa['image_analysis_ia'].get('image_analysis', 'Erro desconhecido.')
+                       if result_text.startswith("❌"):
+                            status_placeholder.error(f"❌ Análise de Imagem Falhou: {result_text}")
                        else:
                             status_placeholder.success("✅ Análise de Imagem concluída.")
 
@@ -1828,97 +1851,116 @@ elif st.session_state.step == 'processing_ia':
                             st.session_state.denuncia_completa, # Pass complete data (this is the cache key)
                             st.session_state.gemini_pro_model
                        )
-                       if st.session_state.denuncia_completa['insights_ia'].get('insights', '').startswith("❌"):
-                            status_placeholder.error(f"❌ Análise Detalhada Falhou: {st.session_state.denuncia_completa['insights_ia']['insights']}")
+                       # Check the result and update placeholder
+                       result_text = st.session_state.denuncia_completa['insights_ia'].get('insights', 'Erro desconhecido.')
+                       if result_text.startswith("❌"):
+                            status_placeholder.error(f"❌ Análise Detalhada Falhou: {result_text}")
                        else:
                             status_placeholder.success("✅ Análise Detalhada concluída.")
 
 
                   elif step_name == 'urgency_suggestion':
-                       # Only run if detailed analysis didn't critically fail, or use fallback data
-                       if st.session_state.denuncia_completa['insights_ia'].get('insights', '').startswith("❌"):
+                       # Check if prerequisite analysis (detailed_analysis) had a critical failure
+                       insights_status_check = st.session_state.denuncia_completa.get('insights_ia', {}).get('insights', 'Status Análise Detalhada IA: Não iniciada.')
+                       if insights_status_check.startswith("❌"):
                            status_placeholder.warning("⚠️ Pulando Sugestão de Urgência: Análise Detalhada prévia falhou.")
-                           st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "🤖 Sugestão de urgência não realizada (Análise Detalhada falhou)."}
+                           st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "🤖 Sugestão de urgência não realizada (Análise Detalhada prévia falhou)."}
                        else:
                            status_placeholder.info("🧠 Calculando o Nível de Prioridade Robótica para esta denúncia...")
                            st.session_state.denuncia_completa['urgencia_ia'] = categorizar_urgencia_gemini(
                                 st.session_state.denuncia_completa, # Pass complete data (this is the cache key)
                                 st.session_state.gemini_pro_model
                            )
-                           if st.session_state.denuncia_completa['urgencia_ia'].get('urgencia_ia', '').startswith("❌"):
-                                status_placeholder.error(f"❌ Sugestão de Urgência Falhou: {st.session_state.denuncia_completa['urgencia_ia']['urgencia_ia']}")
+                           result_text = st.session_state.denuncia_completa['urgencia_ia'].get('urgencia_ia', 'Erro desconhecido.')
+                           if result_text.startswith("❌"):
+                                status_placeholder.error(f"❌ Sugestão de Urgência Falhou: {result_text}")
                            else:
                                 status_placeholder.success("✅ Sugestão de Urgência concluída.")
 
 
                   elif step_name == 'action_suggestion':
-                       # Only run if detailed analysis didn't critically fail, or use fallback data
-                       if st.session_state.denuncia_completa['insights_ia'].get('insights', '').startswith("❌"):
+                       # Check if prerequisite analysis (detailed_analysis) had a critical failure
+                       insights_status_check = st.session_state.denuncia_completa.get('insights_ia', {}).get('insights', 'Status Análise Detalhada IA: Não iniciada.')
+                       if insights_status_check.startswith("❌"):
                            status_placeholder.warning("⚠️ Pulando Sugestões de Causa/Ação: Análise Detalhada prévia falhou.")
-                           st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "🤖 Sugestões de causa/ação não realizadas (Análise Detalhada falhou)."}
+                           st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "🤖 Sugestões de causa/ação não realizadas (Análise Detalhada prévia falhou)."}
                        else:
                             status_placeholder.info("🧠 IA está pensando... Qual pode ser a causa e a melhor ação para este buraco?")
                             st.session_state.denuncia_completa['sugestao_acao_ia'] = sugerir_causa_e_acao_gemini(
                                  st.session_state.denuncia_completa, # Pass complete data (this is the cache key)
                                  st.session_state.gemini_pro_model
                            )
-                            if st.session_state.denuncia_completa['sugestao_acao_ia'].get('sugestao_acao_ia', '').startswith("❌"):
-                                 status_placeholder.error(f"❌ Sugestões de Causa/Ação Falharam: {st.session_state.denuncia_completa['sugestao_acao_ia']['sugestao_acao_ia']}")
+                            result_text = st.session_state.denuncia_completa['sugestao_acao_ia'].get('sugestao_acao_ia', 'Erro desconhecido.')
+                            if result_text.startswith("❌"):
+                                 status_placeholder.error(f"❌ Sugestões de Causa/Ação Falharam: {result_text}")
                             else:
                                  status_placeholder.success("✅ Sugestões de Causa/Ação concluídas.")
 
                   elif step_name == 'summary_generation':
-                       # Only run if detailed analysis didn't critically fail, or use fallback data
-                       if st.session_state.denuncia_completa['insights_ia'].get('insights', '').startswith("❌"):
+                       # Check if prerequisite analysis (detailed_analysis) had a critical failure
+                       insights_status_check = st.session_state.denuncia_completa.get('insights_ia', {}).get('insights', 'Status Análise Detalhada IA: Não iniciada.')
+                       if insights_status_check.startswith("❌"):
                            status_placeholder.warning("⚠️ Pulando Geração de Resumo: Análise Detalhada prévia falhou.")
-                           st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "🤖 Resumo completo não gerado (Análise Detalhada falhou)."}
+                           st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "🤖 Resumo completo não gerado (Análise Detalhada prévia falhou)."}
                        else:
                             status_placeholder.info("🧠 Compilando o Relatório Final Robótico e Inteligente com IA Gemini...")
                             st.session_state.denuncia_completa['resumo_ia'] = gerar_resumo_completo_gemini(
                                  st.session_state.denuncia_completa, # Pass complete data (this is the cache key)
                                  st.session_state.gemini_pro_model
                             )
-                            if st.session_state.denuncia_completa['resumo_ia'].get('resumo_ia', '').startswith("❌"):
-                                 status_placeholder.error(f"❌ Geração de Resumo Falhou: {st.session_state.denuncia_completa['resumo_ia']['resumo_ia']}")
+                            result_text = st.session_state.denuncia_completa['resumo_ia'].get('resumo_ia', 'Erro desconhecido.')
+                            if result_text.startswith("❌"):
+                                 status_placeholder.error(f"❌ Geração de Resumo Falhou: {result_text}")
                             else:
                                  status_placeholder.success("✅ Geração de Resumo concluída.")
 
                   # Small pause after each step display
-                  time.sleep(0.5)
+                  time.sleep(0.3) # Reduced delay slightly
 
               except Exception as e:
-                  # Catch unexpected errors during the execution of a step
-                   status_placeholder.error(f"❌ ERRO FATAL durante a etapa '{step_name}': {e}")
-                   # Log the error in the relevant state key if not already set by process_gemini_response
+                  # Catch unexpected errors during the execution of a step (should be caught by process_gemini_response too, but safety net)
+                   error_message = f"❌ ERRO FATAL INESPERADO durante a etapa '{step_name}': {e}"
+                   status_placeholder.error(error_message)
+                   st.error(f"DEBUG: {error_message}")
+                   # Log the error in the relevant state key if it wasn't already set by process_gemini_response's inner try/except
                    if step_name == 'image_analysis' and not st.session_state.denuncia_completa['image_analysis_ia'].get('image_analysis', '').startswith("❌"):
-                        st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": f"❌ ERRO FATAL na etapa '{step_name}': {e}"}
+                        st.session_state.denuncia_completa['image_analysis_ia'] = {"image_analysis": error_message}
                    elif step_name == 'detailed_analysis' and not st.session_state.denuncia_completa['insights_ia'].get('insights', '').startswith("❌"):
-                        st.session_state.denuncia_completa['insights_ia'] = {"insights": f"❌ ERRO FATAL na etapa '{step_name}': {e}"}
+                        st.session_state.denuncia_completa['insights_ia'] = {"insights": error_message}
                    elif step_name == 'urgency_suggestion' and not st.session_state.denuncia_completa['urgencia_ia'].get('urgencia_ia', '').startswith("❌"):
-                        st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": f"❌ ERRO FATAL na etapa '{step_name}': {e}"}
+                        st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": error_message}
                    elif step_name == 'action_suggestion' and not st.session_state.denuncia_completa['sugestao_acao_ia'].get('sugestao_acao_ia', '').startswith("❌"):
-                        st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": f"❌ ERRO FATAL na etapa '{step_name}': {e}"}
+                        st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": error_message}
                    elif step_name == 'summary_generation' and not st.session_state.denuncia_completa['resumo_ia'].get('resumo_ia', '').startswith("❌"):
-                        st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": f"❌ ERRO FATAL na etapa '{step_name}': {e}"}
+                        st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": error_message}
 
-                   # Stop processing subsequent steps if a critical one failed?
-                   # For now, let's try to continue, as some analyses might still work.
-                   # But fatal errors are explicitly logged.
-                   pass # Continue loop
+                   # Decide if processing should stop after a fatal error.
+                   # For now, we continue to attempt other steps, but log the failure.
+                   pass
 
 
-         # Clear final status message
+         # Clear final status message placeholder
          status_placeholder.empty()
-         st.success("✅ Processamento de IA concluído (verifique os resultados individuais no relatório).")
-         st.info("ℹ️ Alguns passos de IA podem ter sido pulados ou falhado se as APIs não estiverem disponíveis ou se houver erros nos dados/modelos. Detalhes no relatório final.")
-         next_step()
+         # Provide a final summary status
+         all_ia_done = all(not st.session_state.denuncia_completa.get(key, {}).get(key.replace('_ia',''), '').startswith('Status ') for key in ia_results_keys)
+         any_ia_failed = any(st.session_state.denuncia_completa.get(key, {}).get(key.replace('_ia',''), '').startswith('❌') for key in ia_results_keys)
+
+         if all_ia_done and not any_ia_failed:
+              st.success("✅ Todas as análises de IA solicitadas foram concluídas com sucesso!")
+         elif any_ia_failed:
+              st.warning("⚠️ Processamento de IA concluído, mas algumas análises falharam. Verifique os detalhes no relatório final.")
+         else:
+              st.info("ℹ️ Processamento de IA concluído. Algumas análises podem não ter sido realizadas (modelos indisponíveis, falta de dados, etc.). Verifique o relatório.")
+
+
+         next_step() # Always advance to the report after attempting IA processing
 
     else: # No tasks queued (e.g. user re-ran processing page after success)
          st.info("Todas as análises de IA solicitadas já foram concluídas para esta denúncia.")
-         st.button("Ver Relatório", on_click=next_step) # Just go to report
+         st.button("Ver Relatório", on_click=next_step, key='view_report_after_processing_v341')
 
 
-    st.button("Voltar", on_click=prev_step)
+    st.button("Voltar", on_click=prev_step, key='back_from_processing_done_v341')
 
 
 elif st.session_state.step == 'show_report':
@@ -2138,7 +2180,7 @@ elif st.session_state.step == 'show_report':
              st.info("ℹ️ Motor Gemini Texto indisponível ou não configurado. Resumo completo não gerado.")
 
         # Button to re-run IA analysis
-        if st.button("Re-executar Análises de IA", key='rerun_ia_button_v34'):
+        if st.button("Re-executar Análises de IA", key='rerun_ia_button_v341'):
              force_rerun_ia_analysis() # This will clear IA results in state and transition to processing_ia step
 
 
@@ -2152,7 +2194,7 @@ elif st.session_state.step == 'show_report':
     # Option to start new process
     col_report_actions1, col_report_actions2 = st.columns(2)
     with col_report_actions1:
-        if st.button("Iniciar Nova Denúncia", key='new_denuncia_button_v34'):
+        if st.button("Iniciar Nova Denúncia", key='new_denuncia_button_v341'):
             # Clear session state except for API keys and models (which are cached resources)
             for key in list(st.session_state.keys()): # Iterate over a copy of keys as we modify the dict
                 # Keep API keys, models, and the flag indicating keys were loaded
@@ -2183,7 +2225,11 @@ elif st.session_state.step == 'show_report':
             st.session_state.uploaded_image_type = None
             st.session_state.localizacao_manual_input = ''
             st.session_state.endereco_coletado_via = None
-
+            # Clear cached functions related to IA and Geocoding/StreetView
+            # @st.cache_data functions can be cleared individually or globally
+            # Clearing all cache might be safer for a full restart
+            st.cache_data.clear()
+            st.cache_resource.clear()
 
             st.rerun()
 
