@@ -12,7 +12,7 @@
 
 [![Google Maps](https://img.shields.io/badge/-Google%20Maps-000000?style=flat&logo=google)](https://maps.google.com/)
 
-![OpenStreetMap](https://img.shields.io/badge/-OpenStreetMap-8ac00b?style=flat&logo=openstreetmap&logoColor=white)
+[![OpenStreetMap](https://img.shields.io/badge/-OpenStreetMap-8ac00b?style=flat&logo=openstreetmap&logoColor=white)](https://www.openstreetmap.org/)
 
 [![ViaCEP](https://img.shields.io/badge/-ViaCEP-blue.svg)](https://viacep.com.br/)
 
