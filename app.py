@@ -593,7 +593,7 @@ def prev_step():
 
 # --- Layout Principal da Aplicação ---
 
-st.title("Krateras 🚀✨🔒")
+st.title("Krateras 🚧🚧🚧")
 st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 # --- Fluxo da Aplicação baseado no Estado ---
@@ -605,7 +605,7 @@ if st.session_state.step == 'start':
     são nossas prioridades máximas.
 
     Nesta versão, as etapas de coleta de endereço e detalhes foram otimizadas para um fluxo mais suave.
-    A análise automática de imagem por IA permanece desativada, mas a imagem pode ser incluída no relatório final.
+    Uma imagem pode ser incluída no relatório final.
     A geolocalização no relatório agora inclui mapas Google Maps e OpenStreetMap incorporados e links diretos para referência visual.
 
     Utilizamos inteligência artificial (Google Gemini Text) e APIs de localização (Google Geocoding,
@@ -617,7 +617,7 @@ if st.session_state.step == 'start':
     Clique em Iniciar para começarmos a coleta de dados.
     """)
 
-    st.info("⚠️ Suas chaves de API do Google (Gemini e Geocoding) devem ser configuradas nos Streamlit Secrets (`.streamlit/secrets.toml`) para que a IA e a geocodificação automática funcionem corretamente e de forma segura. A API Gemini (apenas o modelo de texto é necessário agora) e a API Geocoding (necessária para mapas Google) podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
+    
 
 
     if st.button("Iniciar Missão Denúncia!"):
