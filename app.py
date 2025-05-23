@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v10.1 - Estabilidade Reforçada Final)
+Krateras 🚧🚧🚧: O Especialista Robótico de Denúncia de Buracos (v10.1 - Estabilidade Reforçada Final)
 
 Bem-vindo à versão finalizada do Krateras, com estabilidade máxima e geolocalização completa!
 Análise de imagem por IA desativada (upload apenas para visualização), etapas consolidadas.
@@ -25,7 +25,7 @@ import urllib.parse # Importado para lidar com URLs
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(
-    page_title="Krateras 🚀✨🔒 - Denúncia de Buracos",
+    page_title="Krateras 🚧🚧🚧 - Denúncia de Buracos",
     page_icon="🚧",
     layout="wide",
     initial_sidebar_state="expanded"
