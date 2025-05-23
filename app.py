@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v9.1 - Nomeação Robótica Corrigida)
+Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v10.0 - OpenStreetMap Detalhado Incorporado)
 
-Bem-vindo à versão finalizada do Krateras, com estabilidade robótica aprimorada!
+Bem-vindo à versão finalizada do Krateras, com geolocalização aprimorada e robustez!
 Análise de imagem por IA desativada (upload apenas para visualização), etapas consolidadas.
 
-Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Link.
+Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Embed/Link.
 Objetivo: Coletar dados de denúncias de buracos com detalhes estruturados e observações,
 incluir imagem para referência visual, geocodificação, e gerar relatórios
 detalhados e priorizados com visualização de mapa.
 
-Vamos juntos consertar essas ruas! Precisão robótica restaurada!
+Vamos juntos consertar essas ruas! Incorporando visualizações geográficas detalhadas...
 """
 
 import streamlit as st
@@ -21,6 +21,7 @@ import re
 import json
 import pandas as pd
 import io
+import urllib.parse # Importado para lidar com URLs
 
 # --- Configuração da Página Streamlit ---
 st.set_page_config(
@@ -116,7 +117,7 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
         st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text) estarão desabilitadas.")
     if not geocoding_key:
         st.warning("⚠️ Segredo 'geocoding_api_key' não encontrado nos Streamlit Secrets. Geocodificação automática e mapa Google Embed estarão desabilitados.")
-        st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI\"\ngeocodificação_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
+        st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI\"\ngeocoding_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
 
     return gemini_key, geocoding_key
 
@@ -464,7 +465,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
     # Acessando os resultados das análises anteriores passados como argumentos
     insights_texto = _insights_ia_result.get('insights', 'Análise da descrição/características não disponível ou com erro.')
     urgencia_ia_text = _urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')
-    sugestao_acao_ia_text = _sugestao_acao_ia_result.get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.')
+    sugestao_acao_ia_text = _sugestao_ia_result.get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.')
 
 
     loc_info_resumo = "Localização exata não especificada ou processada."
@@ -600,13 +601,13 @@ st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 if st.session_state.step == 'start':
     st.write("""
-    Olá! Krateras v9.1 entrando em órbita com **Nomeação Robótica Corrigida**! Sua missão, caso aceite: denunciar buracos na rua
+    Olá! Krateras v10.0 entrando em órbita com **OpenStreetMap Detalhado Incorporado**! Sua missão, caso aceite: denunciar buracos na rua
     para que possam ser consertados. A segurança dos seus dados e a precisão da denúncia
     são nossas prioridades máximas.
 
     Nesta versão, as etapas de coleta de endereço e detalhes foram otimizadas para um fluxo mais suave.
     A análise automática de imagem por IA permanece desativada, mas a imagem pode ser incluída no relatório final.
-    A geolocalização no relatório agora inclui mapa Google Maps incorporado e link OpenStreetMap para referência visual.
+    A geolocalização no relatório agora inclui mapas Google Maps e OpenStreetMap incorporados e links diretos para referência visual.
 
     Utilizamos inteligência artificial (Google Gemini Text) e APIs de localização (Google Geocoding,
     ViaCEP) para coletar, analisar (via texto) e gerar um relatório detalhado para as autoridades competentes.
@@ -738,6 +739,7 @@ elif st.session_state.step == 'collect_address':
                      # Store CEP in buraco data if search was successful
                      st.session_state.buraco['cep_informado'] = st.session_state.cep_input_consolidated
 
+
              st.rerun() # Rerun to update the display based on CEP result and state
 
     # Display CEP messages after the button action
@@ -777,7 +779,7 @@ elif st.session_state.step == 'collect_address':
                 # If manual entry was used, clear CEP info from buraco data state
                 # This ensures CEP is only kept if the CEP search was the LAST successful operation AND the user confirms via this form.
                 if st.session_state.get('cep_input_field_consolidated') and not st.session_state.get('cep_error_consolidated') and st.session_state.get('cep_success_message'):
-                     # CEP search was successful and user confirmed, keep the CEP that was stored in buraco state.
+                     # If CEP search was successful and user confirmed, keep the CEP that was stored in buraco state.
                      pass # CEP is already in st.session_state.buraco from the CEP search logic
                 else:
                      # Manual entry was used, or CEP failed. Clear potential old CEP info from buraco state.
@@ -941,7 +943,7 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                 num_referencia_geo = numero_proximo.strip()
 
                 # We need Street, Number/Reference, City, State and Geocoding API Key to attempt auto-geocoding
-                tem_dados_para_geo_completo = (st.session_state.geocoding_api_key and rua_buraco and num_referencia_geo and cidade_buraco and estado_buraco) # Corrected typo
+                tem_dados_para_geo_completo = (st.session_state.geocoding_api_key and rua_buraco and num_referencia_geo and cidade_buraco and estado_buraco)
 
                 if tem_dados_para_geo_completo:
                     st.info("✅ Chave de Geocodificação e dados completos para tentativa automática encontrados. Tentando gerar o link do Google Maps automaticamente...")
@@ -1008,7 +1010,7 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                      if lat_manual is None and input_original_manual.startswith("http"):
                           st.info("ℹ️ Entrada manual é um link. Tentando extrair coordenadas (sujeito a formato do link)...")
                           # Try regex for Google Maps links (with @lat,lon) or search (with ?,query=lat,lon)
-                          match_maps_link = re.search(r'(?:/@|/search/\?api=1&query=)(-?\d+\.?\d*),(-?\d+\.?\d*)', input_original_manual)
+                          match_maps_link = re.search(r'(?:/@|/search/\?api=1&query=)(-?\d+\.?\d*),(-?\d+\.?\d*)', input_original_input_processed) # Corrected variable name here
                           if match_maps_link:
                               try:
                                   teste_lat = float(match_maps_link.group(1))
@@ -1137,7 +1139,7 @@ elif st.session_state.step == 'processing_ia':
         )
 
         # Rodar categorização de urgência
-        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior (acessado diretamente do state com fallback)
+        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior (acessado diretamente do state)
         st.session_state.denuncia_completa['urgencia_ia'] = categorizar_urgencia_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
             st.session_state.denuncia_completa['insights_ia'], # Passa o resultado da análise de insights (garantido ser um dict ou fallback)
@@ -1146,7 +1148,7 @@ elif st.session_state.step == 'processing_ia':
 
 
         # Rodar sugestão de causa e ação
-        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior (acessado diretamente do state com fallback)
+        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior (acessado diretamente do state)
         st.session_state.denuncia_completa['sugestao_acao_ia'] = sugerir_causa_e_acao_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
             st.session_state.denuncia_completa['insights_ia'], # Passa o resultado da análise de insights (garantido ser um dict ou fallback)
@@ -1155,7 +1157,7 @@ elif st.session_state.step == 'processing_ia':
 
 
         # Gerar resumo completo
-        # Passa o modelo Gemini (pode ser None) E os resultados das análises anteriores (acessados diretamente do state com fallback)
+        # Passa o modelo Gemini (pode ser None) E os resultados das análises anteriores (acessados diretamente do state)
         # Note: This function is not cached
         st.session_state.denuncia_completa['resumo_ia'] = gerar_resumo_completo_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
@@ -1275,21 +1277,34 @@ elif st.session_state.step == 'show_report':
                          st.write(f"[Abrir no Google Maps]({link_maps_google})")
 
 
-                 # 2. OpenStreetMap Embed (st.map) and Link (Combined)
-                 # st.map uses OSM data, let's treat it as the OSM embed
-                 osm_link = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=18/{lat}/{lon}"
-
+                 # 2. OpenStreetMap Embed and Link (Combined)
                  st.markdown("---")
                  st.write("**OpenStreetMap:**")
-                 try:
-                     # st.map provides the OSM-based embed
-                     map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-                     st.map(map_data, zoom=18, use_container_width=True) # Correct parameter
-                     st.info("ℹ️ Mapa OpenStreetMap (via Streamlit) gerado na localização encontrada.")
-                 except Exception as map_error:
-                      st.error(f"❌ Erro ao gerar visualização do mapa OpenStreetMap simplificado: {map_error}")
 
-                 # Display the link below the embed
+                 # Generate the detailed OpenStreetMap embed iframe URL
+                 # A reasonable delta for a small area view. Adjust zoom if needed.
+                 delta = 0.005
+                 bbox = f"{lon - delta},{lat - delta},{lon + delta},{lat + delta}"
+                 # Encode bbox and marker coordinates for the URL
+                 encoded_bbox = urllib.parse.quote(bbox)
+                 encoded_marker = urllib.parse.quote(f"{lat},{lon}")
+                 osm_embed_url = f"https://www.openstreetmap.org/export/embed.html?bbox={encoded_bbox}&layer=mapnik&marker={encoded_marker}"
+
+
+                 try:
+                     # Use st.components.v1.html to embed the detailed OSM map
+                     st.components.v1.html(
+                         f'<iframe width="100%" height="450" frameborder="0" style="border:0" src="{osm_embed_url}" allowfullscreen></iframe>',
+                         height=470, # A bit taller to include border
+                         scrolling=False
+                     )
+                     st.info("ℹ️ Mapa OpenStreetMap detalhado incorporado (via openstreetmap.org).")
+                 except Exception as embed_error:
+                      st.error(f"❌ Erro ao gerar mapa OpenStreetMap incorporado: {embed_error}")
+
+
+                 # Display the direct link below the embed
+                 osm_link = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=18/{lat}/{lon}"
                  st.write(f"[Abrir no OpenStreetMap.org]({osm_link})")
 
 
