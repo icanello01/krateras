@@ -1,5 +1,7 @@
 # Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos
 
+[![Teste o app deployado no Streamlit](https://img.shields.io/badge/-Teste%20o%20app%20deployado%20no%20Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)](https://krateras.streamlit.app/)
+
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1MHVfh8aR8VeZwbV2wJfufL2ZNX9Hu1wb?usp=sharing)
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
