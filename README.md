@@ -10,6 +10,10 @@
 
 [![Google Geocoding](https://img.shields.io/badge/-Google_Geocoding-blue?logo=googlemaps&logoColor=white)](https://developers.google.com/maps/documentation/geocoding)
 
+[![Google Maps](https://img.shields.io/badge/-Google%20Maps-000000?style=flat&logo=google)](https://maps.google.com/)
+
+![OpenStreetMap](https://img.shields.io/badge/-OpenStreetMap-8ac00b?style=flat&logo=openstreetmap&logoColor=white)
+
 [![ViaCEP](https://img.shields.io/badge/-ViaCEP-blue.svg)](https://viacep.com.br/)
 
 [![Python 3.9](https://img.shields.io/badge/python-3.9-blue?logo=python&logoColor=white)](https://www.python.org/)
