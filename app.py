@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v5.0 - Estabilidade Aprimorada)
+Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v6.0 - Simplificada e Estável)
 
-Bem-vindo à versão visual do Krateras, agora focada na estabilidade e fluxo!
-Análise de imagem por IA desativada, mas upload para visualização mantido.
-Interface amigável, inteligência da IA (Texto) otimizada e segurança de chaves mantida.
+Bem-vindo à versão visual do Krateras, simplificada para maior estabilidade!
+Análise de imagem por IA desativada, upload para visualização mantido.
+Etapas de coleta de endereço consolidadas.
 
 Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP.
 Objetivo: Coletar dados de denúncias de buracos com detalhes estruturados e observações,
 incluir imagem para referência visual, geocodificação, e gerar relatórios
 detalhados e priorizados com visualização de mapa.
 
-Vamos juntos consertar essas ruas! Priorizando estabilidade e precisão textual...
+Vamos juntos consertar essas ruas! Otimizando e estabilizando sistemas...
 """
 
 import streamlit as st
@@ -38,7 +38,7 @@ st.markdown("""
     padding-top: 2rem;
     padding-right: 3rem;
     padding-left: 3rem;
-    padding-bottom: 2 Chapadasrem;
+    padding-bottom: 2rem;
 }
 h1, h2, h3 {
     color: #4A90E2; /* Azul Cratera */
@@ -80,8 +80,8 @@ h1, h2, h3 {
     color: #4A90E2 !important;
 }
 /* Classe para ajustar o padding interno dos expanders */
-/* st-emotion-cache-s5fjsg pode variar, inspecione o elemento se não funcionar */
-.st-emotion-cache-s5fjsg, .st-emotion-cache-1njf35f {
+/* As classes exatas podem variar, inspecione o elemento se precisar refinar */
+.st-emotion-cache-s5fjsg, .st-emotion-cache-1njf35f, .st-emotion-cache-1njf35f {
     padding-top: 0.5rem;
     padding-bottom: 0.5rem;
 }
@@ -99,7 +99,8 @@ if 'api_keys_loaded' not in st.session_state:
     st.session_state.api_keys_loaded = False
 if 'gemini_model' not in st.session_state:
     st.session_state.gemini_model = None
-# if 'gemini_vision_model' not in st.session_state: # Removido estado para modelo de visão
+# Modelo de Visão não mais necessário no estado
+# if 'gemini_vision_model' not in st.session_state:
 #     st.session_state.gemini_vision_model = None
 if 'geocoding_api_key' not in st.session_state:
     st.session_state.geocoding_api_key = None
@@ -127,13 +128,11 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
 # --- Inicializar APIs (Cacheado para performance) ---
 
 @st.cache_resource
-# def init_gemini_models(api_key: Optional[str]) -> tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]: # Assinatura antiga
 def init_gemini_text_model(api_key: Optional[str]) -> Optional[genai.GenerativeModel]:
     """Inicializa o modelo Google Gemini (Texto APENAS) com cache."""
     if not api_key:
         st.error("❌ ERRO na Fábrica de Modelos: Chave de API Gemini não fornecida.")
-        # return None, None # Retorno antigo
-        return None # Retorno novo
+        return None
     try:
         genai.configure(api_key=api_key)
         st.success("✅ Conexão com API Google Gemini estabelecida.")
@@ -159,38 +158,15 @@ def init_gemini_text_model(api_key: Optional[str]) -> Optional[genai.GenerativeM
             else:
                  st.error("❌ ERRO na Fábrica de Modelos: Nenhum modelo de texto Gemini compatível encontrado na sua conta.")
 
+        # Modelo de Visão removido, garante que o estado é None
+        # st.session_state.gemini_vision_model = None # Não necessário aqui, feito no main
 
-        # Modelo de Visão removido
-        # vision_model_obj: Optional[genai.GenerativeModel] = None
-        # # Listar modelos que suportam generateContent E têm o atributo supported_input_response_mime_types E suportam algum tipo de imagem
-        # vision_models_candidates = [
-        #     m for m in available_models
-        #     if 'generateContent' in m.supported_generation_methods
-        #     and hasattr(m, 'supported_input_response_mime_types') # **CORREÇÃO APLICADA AQUI**
-        #     and any(mime_type.startswith('image/') for mime_type in m.supported_input_response_mime_types)
-        # ]
-
-        # preferred_vision_names = ['gemini-1.5-flash-latest', 'gemini-1.5-pro-latest', 'gemini-pro-vision']
-        # for name in preferred_vision_names:
-        #      # Verifica se o nome preferencial está na lista de candidatos visuais filtrados
-        #      found_model = next((m for m in vision_models_candidates if m.name.endswith(name)), None)
-        #      if found_model:
-        #         vision_model_obj = genai.GenerativeModel(found_model.name)
-        #         st.success(f"✅ Modelo de Visão Gemini selecionado: '{found_model.name.replace('models/', '')}'.")
-        #         break
-
-        # if not vision_model_obj:
-        #     st.warning("⚠️ AVISO: Nenhum modelo Gemini compatível com análise de imagem ('gemini-pro-vision', 'gemini-1.5-*') encontrado ou disponível. Análise visual por IA estará desabilitada. Verifique se ativou modelos como 'gemini-1.5-flash-latest' na sua conta.")
-
-
-        # return text_model_obj, vision_model_obj # Retorno antigo
-        return text_model_obj # Retorno novo
+        return text_model_obj
 
     except Exception as e:
         st.error(f"❌ ERRO no Painel de Controle Gemini: Falha na inicialização dos modelos Google Gemini. Verifique sua chave e status do serviço.")
         st.exception(e)
-        # return None, None # Retorno antigo
-        return None # Retorno novo
+        return None
 
 
 # --- Funções de API Call (Cacheado para resultados estáveis por sessão) ---
@@ -253,7 +229,6 @@ def geocodificar_endereco(rua: str, numero: str, cidade: str, estado: str, api_k
             else:
                  error_msg = f"Status da API: {status}. {error_msg}"
 
-
             return {"erro": f"Geocodificação falhou. Status: {status}. Mensagem: {error_msg}"}
 
         if not data['results']:
@@ -290,10 +265,10 @@ SAFETY_SETTINGS = [
 
 
 @st.cache_data(show_spinner="🧠 Analisando características estruturadas e observações com IA Gemini...")
-def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, Any], _observacoes: str, _model: genai.GenerativeModel) -> Dict[str, Any]:
+def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, Any], _observacoes: str, _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
     """
     Utiliza o Gemini (Texto) para analisar as características estruturadas e as observações
-    e extrair insights estruturados.
+    e extrair insights estruturados. Retorna um dicionário com o resultado ou mensagem de erro.
     """
     if not _model:
         return {"insights": "🤖 Análise de descrição via IA indisponível (Motor Gemini Text offline)."}
@@ -346,28 +321,25 @@ def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, An
     except Exception as e:
         return {"insights": f"❌ Erro ao analisar características/observações com IA: {e}"}
 
-# @st.cache_data(show_spinner="🧠 IA está vendo... Analisando a imagem do buraco...") # REMOVIDO
-# def analisar_imagem_gemini(_image_bytes: bytes, _mime_type: str, _model: genai.GenerativeModel) -> Dict[str, Any]: # REMOVIDO
-#     """Utiliza o modelo Gemini Vision para analisar uma imagem do buraco.""" # REMOVIDO
-#     # ... código de análise de imagem ... # REMOVIDO
-
 @st.cache_data(show_spinner="🧠 Calculando o Nível de Prioridade Robótica...")
-def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]: # Removido _analise_imagem_ia
-    """Utiliza o Gemini (Texto) para sugerir uma categoria de urgência com base nos dados estruturados, observações e insights."""
+def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_result: Dict[str, Any], _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
+    """
+    Utiliza o Gemini (Texto) para sugerir uma categoria de urgência com base nos dados estruturados, observações e insights.
+    Retorna um dicionário com o resultado ou mensagem de erro.
+    """
     if not _model:
         return {"urgencia_ia": "🤖 Sugestão de urgência via IA indisponível (Motor Gemini Text offline)."}
 
     caracteristicas = _dados_denuncia.get('buraco', {}).get('caracteristicas_estruturadas', {})
     observacoes = _dados_denuncia.get('buraco', {}).get('observacoes_adicionais', 'Sem observações.')
-    insights_texto = _insights_ia.get('insights', 'Análise de insights não disponível.')
-    # analise_imagem_texto = _analise_imagem_ia.get('analise_imagem', 'Análise de imagem não disponível ou com erro.') # REMOVIDO
+    insights_texto = _insights_ia_result.get('insights', 'Análise de insights não disponível.') # Usando o resultado da análise anterior
 
     localizacao_exata = _dados_denuncia.get('localizacao_exata_processada', {})
     tipo_loc = localizacao_exata.get('tipo', 'Não informada')
     input_original_loc = localizacao_exata.get('input_original', 'Não informado.')
 
     loc_contexto = f"Localização informada: Tipo: {tipo_loc}."
-    if input_original_loc != 'Não informado.':
+    if input_original_loc and input_original_loc != 'Não informado.':
          loc_contexto += f" Detalhes originais: '{input_original_loc}'."
 
     if tipo_loc in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Geocodificada (API)', 'Coordenadas Extraídas de Link (Manual)']:
@@ -388,7 +360,7 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
 
     prompt = f"""
     Com base nos dados da denúncia (características estruturadas, observações) e nos insights da análise de texto, sugira a MELHOR categoria de urgência para o reparo deste buraco.
-    Considere a severidade/tamanho, profundidade, PERIGOS POTENCIAIS e impactos mencionados, o CONTEXTO DA VIA (tipo de tráfego, contexto específico) e qualquer ADICIONAL relevante nas observações.
+    Considere a severidade/tamanho, profundidade, PERIGOS POTENCIAIS e impactos mencionados, o CONTEXTO DA VIA (tipo de tráfego, contexto específico) e qualquer ADICIONAL relevante nas observações ou insights.
 
     Escolha UMA Categoria de Urgência entre estas:
     - Urgência Baixa: Buraco pequeno, sem perigo aparente, em local de baixo tráfego. Principalmente estético ou pequeno incômodo.
@@ -409,7 +381,7 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
     Insights Extraídos pela Análise de Texto/Características:
     {insights_texto}
 
-    Com base nestes dados, qual categoria de urgência você sugere? Forneça APENAS a categoria (ex: "Urgência Alta") e uma breve JUSTIFICATIVA (máximo 2 frases) explicando POR QUE essa categoria foi sugerida, citando os elementos mais importantes dos dados fornecidos.
+    Com base nestes dados, qual categoria de urgência você sugere? Forneça APENAS a categoria (ex: "Urgência Alta") e uma breve JUSTIFICATIVA (máximo 2 frases) explicando POR QUE essa categoria foi sugerida, citando os elementos mais importantes dos dados fornecidos e insights.
 
     Formato de saída (muito importante seguir este formato):
     Categoria Sugerida: [Categoria Escolhida]
@@ -421,22 +393,24 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
              block_reason = "Desconhecido"
              if hasattr(response, 'prompt_feedback') and hasattr(response.prompt_feedback, 'block_reason'):
                  block_reason = response.prompt_feedback.block_reason.name
-             return {"urgencia_ia": f"❌ Sugestão de urgência bloqueada. Motivo: {block_reason}"}
+             return {"urgencia_ia": f"❌ Sugestão de urgência bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
         return {"urgencia_ia": response.text.strip()}
     except Exception as e:
         return {"urgencia_ia": f"❌ Erro ao sugerir urgência com IA: {e}"}
 
 
 @st.cache_data(show_spinner="🧠 IA está pensando... Qual pode ser a causa e a melhor ação para este buraco?")
-def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]: # Removido _analise_imagem_ia
-    """Utiliza o Gemini (Texto) para sugerir possíveis causas do buraco e ações de reparo com base nos dados, insights e observações."""
+def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_result: Dict[str, Any], _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
+    """
+    Utiliza o Gemini (Texto) para sugerir possíveis causas do buraco e ações de reparo com base nos dados, insights e observações.
+    Retorna um dicionário com o resultado ou mensagem de erro.
+    """
     if not _model:
         return {"sugestao_acao_ia": "🤖 Sugestões de causa/ação via IA indisponíveis (Motor Gemini Text offline)."}
 
     caracteristicas = _dados_denuncia.get('buraco', {}).get('caracteristicas_estruturadas', {})
-    observacoes = _dados_denuncia.get('observacoes_adicionais', 'Sem observações.')
-    insights_texto = _insights_ia.get('insights', 'Análise de insights não disponível.')
-    # analise_imagem_texto = _analise_imagem_ia.get('analise_imagem', 'Análise de imagem não disponível ou com erro.') # REMOVIDO
+    observacoes = _dados_denuncia.get('buraco', {}).get('observacoes_adicionais', 'Sem observações.')
+    insights_texto = _insights_ia_result.get('insights', 'Análise de insights não disponível.') # Usando o resultado da análise anterior
 
     # Formatar as características estruturadas para o prompt
     caracteristicas_formatadas = []
@@ -452,7 +426,7 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
     prompt = f"""
     Com base nos dados fornecidos pelo denunciante (características estruturadas, observações) e nos insights extraídos pela análise de IA de texto, tente sugerir:
     1. Uma ou duas PÓSSIVEIS CAUSAS para a formação deste buraco específico (ex: chuva forte recente, desgaste do asfalto pelo tempo/tráfego, problema na drenagem subterrânea, afundamento devido a reparo anterior, obra mal feita na região). Baseie-se em todos os dados textuais disponíveis.
-    2. Sugestões de TIPOS DE AÇÃO ou REPARO mais adequados ou necessários para resolver este problema (ex: simples tapa-buraco, recapeamento da seção, inspeção de drenagem, sinalização de emergência, interdição parcial da via, reparo na rede de água/esgoto). Baseie-se na severidade, perigos e o que foi observado/analisado (texto).
+    2. Sugestões de TIPOS DE AÇÃO ou REPARO mais adequados ou necessários para resolver este problema (ex: simples tapa-buraco, recapeamento da seção, inspeção de drenagem, sinalização de emergência, interdição parcial da via, reparo na rede de água/esgoto). Baseie-se na severidade, perigos e o que foi observado/analisado (texto) e as possíveis causas.
     Baseie suas sugestões EXCLUSIVAMENTE nas informações e análises disponíveis. Se os dados não derem pistas suficientes, indique "Não especificado/inferido nos dados". Seja lógico e prático.
 
     Informações Relevantes da Denúncia:
@@ -478,22 +452,27 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia: D
         return {"sugestao_acao_ia": f"❌ Erro ao sugerir causa/ação com IA: {e}"}
 
 @st.cache_data(show_spinner="🧠 Compilando o Relatório Final Robótico e Inteligente com IA Gemini...")
-def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _model: genai.GenerativeModel) -> Dict[str, Any]:
-    """Utiliza o Gemini (Texto) para gerar um resumo narrativo inteligente da denúncia completa, incluindo dados estruturados e análises de IA (texto)."""
+def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insights_ia_result: Dict[str, Any], _urgencia_ia_result: Dict[str, Any], _sugestao_acao_ia_result: Dict[str, Any], _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
+    """
+    Utiliza o Gemini (Texto) para gerar um resumo narrativo inteligente da denúncia completa,
+    incluindo dados estruturados e resultados das análises de IA (texto).
+    Retorna um dicionário com o resultado ou mensagem de erro.
+    """
     if not _model:
         return {"resumo_ia": "🤖 Resumo inteligente via IA indisponível (Motor Gemini Text offline)."}
 
+    # Acessando os dados diretamente do dicionário completo passado como argumento
     denunciante = _dados_denuncia_completa.get('denunciante', {})
     buraco = _dados_denuncia_completa.get('buraco', {})
     endereco = buraco.get('endereco', {})
     caracteristicas = buraco.get('caracteristicas_estruturadas', {})
     observacoes = buraco.get('observacoes_adicionais', 'Nenhuma observação adicional fornecida.')
     localizacao_exata = _dados_denuncia_completa.get('localizacao_exata_processada', {})
-    insights_ia = _dados_denuncia_completa.get('insights_ia', {}).get('insights', 'Análise da descrição/características não disponível ou com erro.')
-    # analise_imagem_ia = _dados_denuncia_completa.get('analise_imagem_ia', {}).get('analise_imagem', 'Análise visual por IA não disponível ou com erro.') # REMOVIDO
-    # Acessando os resultados da IA com get e fallback para garantir que são dicionários
-    urgencia_ia_result = _dados_denuncia_completa.get('urgencia_ia', {})
-    sugestao_acao_ia_result = _dados_denuncia_completa.get('sugestao_acao_ia', {})
+
+    # Acessando os resultados das análises anteriores passados como argumentos
+    insights_texto = _insights_ia_result.get('insights', 'Análise da descrição/características não disponível ou com erro.')
+    urgencia_ia_text = _urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')
+    sugestao_acao_ia_text = _sugestao_acao_ia_result.get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.')
 
 
     loc_info_resumo = "Localização exata não especificada ou processada."
@@ -506,13 +485,13 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
          lon = localizacao_exata.get('longitude')
          link_gerado = localizacao_exata.get('google_maps_link_gerado', 'Não disponível')
          loc_info_resumo = f"Localização Exata: Coordenadas {lat}, {lon} (Obtida via: {tipo_loc_processada.replace(' (API)', ' API').replace('Manual', 'Manual').replace('Fornecidas/Extraídas', 'Manual')}). Link Google Maps: {link_gerado}."
-         if input_original_loc != 'Não informado.':
+         if input_original_loc and input_original_loc != 'Não informado.':
              loc_info_resumo += f" (Input original: '{input_original_loc}')"
 
     elif tipo_loc_processada == 'Descrição Manual Detalhada':
          loc_info_resumo = f"Localização via descrição manual detalhada: '{localizacao_exata.get('descricao_manual', 'Não informada')}'. (Input original: '{input_original_loc}')"
 
-    elif input_original_loc != 'Não informado.' and tipo_loc_processada == 'Não informada':
+    elif input_original_loc and input_original_loc != 'Não informado.' and tipo_loc_processada == 'Não informada':
          loc_info_resumo = f"Localização informada (tipo não detectado): '{input_original_loc}'."
 
     if motivo_falha_geo_resumo:
@@ -555,13 +534,13 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _mode
     Observações Adicionais: "{observacoes}"
 
     Insights da Análise de Texto/Características de IA:
-    {insights_ia}
+    {insights_texto}
 
     Sugestão de Urgência pela IA:
-    {urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')}
+    {urgencia_ia_text}
 
     Sugestões de Causa e Ação pela IA:
-    {sugestao_acao_ia_result.get('sugestao_acao_ia', 'Sugestões não geradas ou com erro.')}
+    {sugestao_acao_ia_text}
 
 
     Gere o resumo em português. Comece com "Relatório Krateras: Denúncia de buraco..." ou algo similar. Use linguagem clara e direta.
@@ -585,10 +564,8 @@ def next_step():
     steps = [
         'start',
         'collect_denunciante',
-        'collect_buraco_address_method',
-        'collect_buraco_address_cep', # Pode pular dependendo da escolha
-        'collect_buraco_address_manual', # Pode pular dependendo da escolha
-        'collect_buraco_details', # Unifica a coleta do resto e a geocodificação/localização manual/imagem
+        'collect_address', # Nova etapa consolidada
+        'collect_buraco_details_and_location', # Nova etapa consolidada
         'processing_ia',
         'show_report'
     ]
@@ -596,14 +573,11 @@ def next_step():
         current_index = steps.index(st.session_state.step)
         if current_index < len(steps) - 1:
             st.session_state.step = steps[current_index + 1]
-            # st.rerun() # Removido st.rerun() explícito aqui para ver se melhora o fluxo CEP
-            # Streamlit já reruns após callback/state change
+            st.rerun() # Manter rerun para transição de tela
     except ValueError:
         # Caso o passo atual não esteja na lista (erro ou estado inicial)
         st.session_state.step = steps[0]
-        # st.rerun() # Removido st.rerun() explícito
-    # Um rerun ocorrerá naturalmente após a execução da função next_step() se for chamada por um callback.
-    # Se for chamada diretamente, talvez precise reavaliar. No fluxo atual, é chamada por botões ou após processamento.
+        st.rerun()
 
 
 def prev_step():
@@ -611,36 +585,19 @@ def prev_step():
     steps = [
         'start',
         'collect_denunciante',
-        'collect_buraco_address_method',
-        'collect_buraco_address_cep',
-        'collect_buraco_address_manual',
-        'collect_buraco_details',
+        'collect_address', # Nova etapa consolidada
+        'collect_buraco_details_and_location', # Nova etapa consolidada
         'processing_ia',
         'show_report'
     ]
     try:
         current_index = steps.index(st.session_state.step)
         if current_index > 0:
-             # Lógica para pular passos de CEP/Manual se não foram usados
-             if st.session_state.step == 'collect_buraco_details':
-                  # Se chegamos aqui diretamente do método, voltamos para lá
-                  # Verifica qual foi o método original de coleta de endereço
-                  endereco_coletado_via = st.session_state.get('endereco_coletado_via')
-                  if endereco_coletado_via == 'cep':
-                      st.session_state.step = 'collect_buraco_address_cep'
-                  elif endereco_coletado_via == 'manual':
-                      st.session_state.step = 'collect_buraco_address_manual'
-                  else: # Fallback seguro se não soubermos a origem
-                       st.session_state.step = steps[current_index - 1] # Volta para address_method
-             elif st.session_state.step == 'collect_buraco_address_cep' or st.session_state.step == 'collect_buraco_address_manual':
-                  st.session_state.step = 'collect_buraco_address_method'
-             else:
-                  st.session_state.step = steps[current_index - 1]
-
-             st.rerun() # Manter rerun aqui para garantir que a navegação de volta funciona
+             st.session_state.step = steps[current_index - 1]
+             st.rerun()
     except ValueError:
          st.session_state.step = steps[0]
-         st.rerun() # Manter rerun aqui
+         st.rerun()
 
 
 # --- Layout Principal da Aplicação ---
@@ -652,13 +609,14 @@ st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 if st.session_state.step == 'start':
     st.write("""
-    Olá! Krateras v5.0 entrando em órbita com **Estabilidade Prioritária**! Sua missão, caso aceite: denunciar buracos na rua
+    Olá! Krateras v6.0 entrando em órbita com **Estabilidade Aprimorada**! Sua missão, caso aceite: denunciar buracos na rua
     para que possam ser consertados. A segurança dos seus dados e a precisão da denúncia
     são nossas prioridades máximas.
 
     Nesta versão, focamos na estabilidade da análise textual e geolocalização. A funcionalidade
     de análise automática de imagem por IA foi temporariamente desativada, mas você ainda pode
-    fazer o upload de uma foto para inclusão no relatório visual.
+    fazer o upload de uma foto para inclusão no relatório visual. As etapas de coleta de endereço
+    foram simplificadas.
 
     Utilizamos inteligência artificial (Google Gemini Text) e APIs de localização (Google Geocoding,
     ViaCEP) para coletar, analisar (via texto) e gerar um relatório detalhado para as autoridades competentes.
@@ -676,7 +634,6 @@ if st.session_state.step == 'start':
         # Carregar chaves e inicializar APIs
         gemini_api_key, geocoding_api_key = load_api_keys()
         st.session_state.geocoding_api_key = geocoding_api_key # Armazena a chave de geocoding no estado
-        # st.session_state.gemini_model, st.session_state.gemini_vision_model = init_gemini_models(gemini_api_key) # Chamada antiga
         st.session_state.gemini_model = init_gemini_text_model(gemini_api_key) # Inicializa APENAS modelo de texto
         st.session_state.gemini_vision_model = None # Garante que o modelo de visão é None
         st.session_state.api_keys_loaded = True # Marca que tentamos carregar as chaves
@@ -708,177 +665,106 @@ elif st.session_state.step == 'collect_denunciante':
 
     st.button("Voltar", on_click=prev_step)
 
-
-elif st.session_state.step == 'collect_buraco_address_method':
-    st.header("--- 🚧 Detalhes do Buraco (Nosso Alvo!) ---")
+# --- NOVA ETAPA CONSOLIDADA: COLETAR ENDEREÇO ---
+elif st.session_state.step == 'collect_address':
+    st.header("--- 🚧 Detalhes do Buraco (Endereço Base) ---")
     st.subheader("Como identificar a rua do buraco?")
 
-    # Armazenar a escolha do método diretamente no estado para usar no botão Voltar
-    st.session_state.endereco_address_method_choice = st.radio(
-        "Escolha o método:",
-        ('Digitar nome manualmente', 'Buscar por CEP'),
-        key='endereco_method' # Keep key for persistence if needed elsewhere
-    )
+    # Initialize address data in state if not present
+    if 'buraco' not in st.session_state.denuncia_completa:
+        st.session_state.denuncia_completa['buraco'] = {'endereco': {}}
 
-    # Use um botão para confirmar a escolha e mover para o próximo sub-step
-    if st.button("Selecionar Método"):
-         if st.session_state.endereco_address_method_choice == 'Digitar nome manualmente':
-              st.session_state.endereco_coletado_via = 'manual' # Guarda a forma como coletamos o endereço
-              st.session_state.step = 'collect_buraco_address_manual'
-         elif st.session_state.endereco_address_method_choice == 'Buscar por CEP':
-              st.session_state.endereco_coletado_via = 'cep' # Guarda a forma como coletamos o endereço
-              st.session_state.step = 'collect_buraco_address_cep'
-         st.rerun() # Força a atualização para o próximo passo
+    endereco_atual = st.session_state.denuncia_completa['buraco']['endereco']
 
-    st.button("Voltar", on_click=prev_step)
+    with st.form("form_address_method_and_data"):
+        opcao_localizacao = st.radio(
+            "Escolha o método para fornecer o endereço da rua:",
+            ('Digitar nome manualmente', 'Buscar por CEP'),
+            key='endereco_method_consolidated'
+        )
 
+        cep_input = ''
+        dados_cep_display: Dict[str, Any] = {}
 
-elif st.session_state.step == 'collect_buraco_address_cep':
-    st.header("--- 🚧 Detalhes do Buraco (Busca por CEP) ---")
-    st.write("Digite o CEP do local do buraco.")
+        if opcao_localizacao == 'Buscar por CEP':
+            st.info("Digite o CEP para preencher automaticamente os campos de Rua, Bairro, Cidade e Estado.")
+            cep_input = st.text_input("Digite o CEP (apenas números):", max_chars=8, key='cep_buraco_consolidated')
+            buscar_cep_button = st.form_submit_button("Buscar CEP")
 
-    # Inicializa estados para o CEP
-    if 'dados_cep_validos' not in st.session_state:
-         st.session_state.dados_cep_validos = None
-    if 'cep_error' not in st.session_state:
-         st.session_state.cep_error = False
-    if 'cep_buraco' not in st.session_state: # Garante que o input text tem um valor inicial
-         st.session_state.cep_buraco = ''
-
-
-    with st.form("form_cep"):
-        cep_input = st.text_input("Digite o CEP (apenas números):", max_chars=8, key='cep_buraco')
-        buscar_button = st.form_submit_button("Buscar CEP")
-
-        # --- Lógica de busca e exibição DENTRO do form_submit ---
-        if buscar_button:
-            if not cep_input:
-                st.error("❗ Por favor, digite um CEP.")
-                st.session_state.cep_error = True
-                st.session_state.dados_cep_validos = None # Limpa dados válidos em caso de input vazio
-            else:
-                dados_cep = buscar_cep(cep_input.strip())
-
-                if 'erro' in dados_cep:
-                    st.error(f"❌ Falha na busca por CEP: {dados_cep['erro']}")
-                    st.session_state.cep_error = True # Marca que houve erro no CEP
-                    st.session_state.dados_cep_validos = None # Limpa dados válidos
+            if buscar_cep_button and cep_input:
+                dados_cep_result = buscar_cep(cep_input.strip())
+                if 'erro' in dados_cep_result:
+                    st.error(f"❌ Falha na busca por CEP: {dados_cep_result['erro']}")
+                    # Keep previous manual values if they exist
+                    dados_cep_display = endereco_atual.copy()
                 else:
-                    # Sucesso: Armazena dados válidos e exibe IMEDIATAMENTE
-                    st.session_state.dados_cep_validos = dados_cep
-                    st.session_state.cep_error = False
-                    st.success("✅ Endereço Encontrado (ViaCEP):")
-                    st.write(f"**Rua:** {dados_cep.get('logradouro', 'Não informado')}")
-                    st.write(f"**Bairro:** {dados_cep.get('bairro', 'Não informado')}")
-                    st.write(f"**Cidade:** {dados_cep.get('localidade', 'Não informado')}")
-                    st.write(f"**Estado:** {dados_cep.get('uf', 'Não informado')}")
-                    st.write(f"**CEP:** {cep_input.strip()}")
-                    st.info("Por favor, confirme se estes dados estão corretos. Se não, use o botão 'Corrigir Endereço Manualmente'.")
-
-                    # Preenche os dados do buraco no estado AQUI para que "Confirmar" possa usá-los
-                    st.session_state.denuncia_completa['buraco'] = {
-                        'endereco': {
-                            'rua': st.session_state.dados_cep_validos.get('logradouro', ''),
-                            'bairro': st.session_state.dados_cep_validos.get('bairro', ''),
-                            'cidade_buraco': st.session_state.dados_cep_validos.get('localidade', ''),
-                            'estado_buraco': st.session_state.dados_cep_validos.get('uf', '')
-                        },
-                        'cep_informado': cep_input.strip() # Garante que o CEP digitado é armazenado
+                    st.success("✅ Endereço Encontrado (ViaCEP)! Por favor, confirme ou corrija abaixo.")
+                    dados_cep_display = {
+                        'rua': dados_cep_result.get('logradouro', ''),
+                        'bairro': dados_cep_result.get('bairro', ''),
+                        'cidade_buraco': dados_cep_result.get('localidade', ''),
+                        'estado_buraco': dados_cep_result.get('uf', '')
                     }
-                    # Não precisa de st.rerun() explícito aqui. O form submit já causa um rerun.
-                    # A exibição dos botões de ação e a persistência do endereço vêm do estado
-                    # na próxima execução do script após o submit.
+                    # Update state immediately after successful CEP search
+                    endereco_atual.update(dados_cep_display)
+                    st.session_state.denuncia_completa['buraco']['cep_informado'] = cep_input.strip()
+            elif buscar_cep_button and not cep_input:
+                 st.error("❗ Por favor, digite um CEP para buscar.")
+                 # Keep previous manual values if they exist
+                 dados_cep_display = endereco_atual.copy()
+            else:
+                 # If button not clicked or no input yet, use current state or empty
+                 dados_cep_display = endereco_atual.copy()
 
+        else: # Digitar nome manualmente
+            st.info("Digite o endereço da rua do buraco manualmente.")
+            # Use existing state as initial value
+            dados_cep_display = endereco_atual.copy()
+            if 'cep_informado' in st.session_state.denuncia_completa['buraco']:
+                 del st.session_state.denuncia_completa['buraco']['cep_informado'] # Clear CEP info if switching to manual
 
-    # --- Lógica para exibir botões de ação FORA do form, baseada no estado após a busca ---
-    # Exibe botões de ação APENAS se uma busca foi feita (cep_buraco existe)
-    # E a busca foi bem-sucedida (dados_cep_validos não é None e não houve erro)
-    if st.session_state.get('cep_buraco') and not st.session_state.get('cep_error') and st.session_state.get('dados_cep_validos'):
-        st.markdown("---") # Separador visual para os botões de ação
-        col1, col2 = st.columns(2)
-        with col1:
-            # Botão para confirmar e ir para detalhes (número, descrição)
-            if st.button("Confirmar Endereço e Avançar"):
-                 next_step()
-
-        with col2:
-            # Botão para corrigir manualmente (volta para entrada manual)
-            if st.button("Corrigir Endereço Manualmente"):
-                 st.session_state.endereco_coletado_via = 'manual'
-                 st.session_state.step = 'collect_buraco_address_manual'
-                 st.session_state.dados_cep_validos = None # Limpa dados CEP ao ir para manual
-                 st.session_state.cep_error = False # Limpa erro
-                 # Limpa o CEP input para o caso de voltar para CEP depois
-                 st.session_state.cep_buraco = ''
-                 st.rerun()
-
-    elif st.session_state.get('cep_error'): # Se houve erro na busca por CEP
+        # Manual input fields (always displayed, potentially pre-filled by CEP)
         st.markdown("---")
-        st.warning("Não foi possível obter o endereço por CEP.")
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Tentar novamente por CEP"):
-                 st.session_state.cep_error = False # Reseta o erro para tentar novamente
-                 st.session_state.cep_buraco = '' # Limpa o input para uma nova tentativa
-                 st.session_state.dados_cep_validos = None # Garante que dados validos estao limpos
-                 st.rerun() # Força reload para resetar o formulário de CEP
-        with col2:
-            if st.button("Digitar endereço manualmente"):
-                 st.session_state.endereco_coletado_via = 'manual'
-                 st.session_state.step = 'collect_buraco_address_manual'
-                 st.session_state.dados_cep_validos = None # Limpa dados CEP ao ir para manual
-                 st.session_state.cep_error = False # Limpa erro
-                 st.session_state.cep_buraco = '' # Limpa o CEP input
-                 st.rerun()
-    # Note: Se o formulário nunca foi submetido (cep_buraco não existe) ou o input estava vazio (tratado no if buscar_button),
-    # esta parte fora do form não exibirá nada, o que é o comportamento esperado.
-
-    st.button("Voltar", on_click=prev_step)
+        st.subheader("Digite ou Corrija o Endereço:")
+        # Use the 'dados_cep_display' (from CEP or previous state) as initial value
+        rua_manual = st.text_input("Nome completo da rua:", value=dados_cep_display.get('rua', ''), key='rua_manual_buraco_consolidated')
+        bairro_manual = st.text_input("Bairro onde está o buraco (opcional):", value=dados_cep_display.get('bairro', ''), key='bairro_manual_buraco_consolidated')
+        cidade_manual = st.text_input("Cidade onde está o buraco:", value=dados_cep_display.get('cidade_buraco', ''), key='cidade_manual_buraco_consolidated')
+        estado_manual = st.text_input("Estado (UF) onde está o buraco:", value=dados_cep_display.get('estado_buraco', ''), max_chars=2, key='estado_manual_buraco_consolidated')
 
 
-elif st.session_state.step == 'collect_buraco_address_manual':
-    st.header("--- 🚧 Detalhes do Buraco (Entrada Manual) ---")
-    st.write("Digite os dados do endereço do buraco manualmente.")
+        # Use a different submit button to advance the step after confirming address
+        submitted_address = st.form_submit_button("Confirmar Endereço e Avançar para Detalhes")
 
-    # Use os dados do CEP pré-preenchidos se vier dessa rota, ou inicialize vazio
-    endereco_inicial = st.session_state.denuncia_completa.get('buraco', {}).get('endereco', {})
-
-    with st.form("form_manual_address"):
-        rua_manual = st.text_input("Nome completo da rua:", value=endereco_inicial.get('rua', ''), key='rua_manual_buraco')
-        bairro_manual = st.text_input("Bairro onde está o buraco (opcional):", value=endereco_inicial.get('bairro', ''), key='bairro_manual_buraco')
-        cidade_manual = st.text_input("Cidade onde está o buraco:", value=endereco_inicial.get('cidade_buraco', ''), key='cidade_manual_buraco')
-        estado_manual = st.text_input("Estado (UF) onde está o buraco:", value=endereco_inicial.get('estado_buraco', ''), max_chars=2, key='estado_manual_buraco')
-
-        submitted = st.form_submit_button("Avançar (Endereço Manual)")
-
-        if submitted:
+        if submitted_address:
             if not rua_manual or not cidade_manual or not estado_manual:
                 st.error("❗ Rua, Cidade e Estado são campos obrigatórios para o endereço do buraco.")
             else:
-                # Garante que 'buraco' existe antes de adicionar/atualizar 'endereco'
-                if 'buraco' not in st.session_state.denuncia_completa:
-                    st.session_state.denuncia_completa['buraco'] = {}
-
+                # Update the address in state from the manual fields (most current values)
                 st.session_state.denuncia_completa['buraco']['endereco'] = {
                     'rua': rua_manual.strip(),
                     'bairro': bairro_manual.strip(),
                     'cidade_buraco': cidade_manual.strip(),
-                    'estado_buraco': estado_manual.strip().upper() # Guarda em maiúsculas
+                    'estado_buraco': estado_manual.strip().upper()
                 }
-                # Remove dados de CEP se veio da busca e agora foi corrigido manualmente
-                if 'cep_informado' in st.session_state.denuncia_completa['buraco']:
-                     del st.session_state.denuncia_completa['buraco']['cep_informado']
+                 # Keep CEP if it was used and still in state
+                if opcao_localizacao == 'Buscar por CEP' and cep_input.strip():
+                     st.session_state.denuncia_completa['buraco']['cep_informado'] = cep_input.strip()
+                elif 'cep_informado' in st.session_state.denuncia_completa['buraco']:
+                    del st.session_state.denuncia_completa['buraco']['cep_informado']
 
-                next_step() # Move para a próxima etapa (coleta de detalhes)
+
+                next_step() # Move to the next stage (collecting details and location)
 
     st.button("Voltar", on_click=prev_step)
 
 
-elif st.session_state.step == 'collect_buraco_details':
-    st.header("--- 🚧 Detalhes Finais do Buraco ---")
+# --- NOVA ETAPA CONSOLIDADA: COLETAR DETALHES E LOCALIZAÇÃO EXATA ---
+elif st.session_state.step == 'collect_buraco_details_and_location':
+    st.header("--- 🚧 Detalhes Finais e Localização Exata ---")
     st.subheader("Informações cruciais para a localização e análise!")
 
-    # Exibe o endereço básico já coletado para referência
+    # Exibe o endereço base já coletado para referência
     endereco_basico = st.session_state.denuncia_completa.get('buraco', {}).get('endereco', {})
     st.write(f"Endereço Base: Rua **{endereco_basico.get('rua', 'Não informada')}**, Cidade: **{endereco_basico.get('cidade_buraco', 'Não informada')}** - **{endereco_basico.get('estado_buraco', 'Não informado')}**")
     if endereco_basico.get('bairro'):
@@ -888,7 +774,7 @@ elif st.session_state.step == 'collect_buraco_details':
 
     st.markdown("---") # Separador visual
 
-    with st.form("form_buraco_details"):
+    with st.form("form_buraco_details_location"):
         st.subheader("📋 Características do Buraco (Escolha as opções)")
         col1, col2 = st.columns(2)
         with col1:
@@ -916,7 +802,7 @@ elif st.session_state.step == 'collect_buraco_details':
              trafego = st.selectbox(
                  "Tráfego Estimado na Via:",
                  ['Selecione', 'Muito Baixo (rua local sem saída)', 'Baixo (rua residencial calma)', 'Médio (rua residencial/comercial com algum fluxo)', 'Alto (avenida movimentada, via de acesso)', 'Muito Alto (via expressa, anel viário)'],
-                 key='trafego_buraco'
+                 key='trafego_buranco' # Corrigido typo
              )
              contexto_via = st.multiselect(
                  "Contexto da Via (selecione um ou mais):",
@@ -954,8 +840,9 @@ elif st.session_state.step == 'collect_buraco_details':
 
         if submitted:
             # Validar campos obrigatórios
-            required_selects = {'tamanho_buraco': 'Tamanho Estimado', 'perigo_buraco': 'Perigo Estimado', 'profundidade_buraco': 'Profundidade Estimada', 'agua_buraco': 'Presença de Água', 'trafego_buraco': 'Tráfego Estimado'}
-            missing_selects = [label for key, label in required_selects.items() if st.session_state[key] == 'Selecione']
+            required_selects = {'tamanho_buraco': 'Tamanho Estimado', 'perigo_buraco': 'Perigo Estimado', 'profundidade_buraco': 'Profundidade Estimada', 'agua_buraco': 'Presença de Água', 'trafego_buranco': 'Tráfego Estimado na Via'} # Corrigido typo aqui também
+            missing_selects = [label for key, label in required_selects.items() if st.session_state.get(key, 'Selecione') == 'Selecione'] # Use .get for safety
+
 
             if not numero_proximo or not lado_rua or not observacoes_adicionais:
                  st.error("❗ Número próximo/referência, Lado da rua e Observações adicionais são campos obrigatórios.")
@@ -975,7 +862,7 @@ elif st.session_state.step == 'collect_buraco_details':
                          'Perigo Estimado': perigo,
                          'Profundidade Estimada': profundidade,
                          'Presença de Água/Alagamento': agua,
-                         'Tráfego Estimado na Via': trafego,
+                         'Tráfego Estimado na Via': st.session_state.get('trafego_buranco', 'Selecione'), # Use .get
                          'Contexto da Via': contexto_via if contexto_via else [] # Garante que é lista, pode ser vazia
                     },
                     'observacoes_adicionais': observacoes_adicionais.strip()
@@ -1179,73 +1066,62 @@ elif st.session_state.step == 'processing_ia':
     st.write("Por favor, aguarde enquanto o Krateras analisa os dados (via texto) e gera o relatório com a inteligência do Google Gemini.")
     st.info("ℹ️ A análise visual por IA está desativada nesta versão para otimização da estabilidade.")
 
+    # Access data needed for IA functions
     buraco_data = st.session_state.denuncia_completa.get('buraco', {})
     caracteristicas = buraco_data.get('caracteristicas_estruturadas', {})
     observacoes = buraco_data.get('observacoes_adicionais', '')
-    imagem_data = buraco_data.get('imagem_denuncia') # Mantém os dados da imagem carregada
 
-    # Resetar resultados de IA antes de rodar para garantir que não estamos usando resultados de um rerun anterior sem dados
+    # Reset IA results before running
     st.session_state.denuncia_completa['insights_ia'] = {}
-    # st.session_state.denuncia_completa['analise_imagem_ia'] = {} # REMOVIDO - Não haverá análise de imagem
     st.session_state.denuncia_completa['urgencia_ia'] = {}
     st.session_state.denuncia_completa['sugestao_acao_ia'] = {}
     st.session_state.denuncia_completa['resumo_ia'] = {}
 
-
-    # Rodar análise de texto/características
-    if st.session_state.gemini_model:
-        st.session_state.denuncia_completa['insights_ia'] = analisar_caracteristicas_e_observacoes_gemini(
+    # Use a spinner context manager for the whole processing block
+    with st.spinner("Executando análises de IA..."):
+        # Rodar análise de texto/características
+        # Passa o modelo Gemini (pode ser None)
+        insights_result = analisar_caracteristicas_e_observacoes_gemini(
             caracteristicas,
             observacoes,
             st.session_state.gemini_model
         )
-    else:
-        st.warning("⚠️ Modelo Google Gemini Text não inicializado. Análise de características/observações por IA desabilitada.")
-        st.session_state.denuncia_completa['insights_ia'] = {"insights": "Análise de características/observações via IA indisponível."}
+        st.session_state.denuncia_completa['insights_ia'] = insights_result
 
 
-    # Rodar categorização de urgência
-    # Certifica-se de passar os dados IA processados, mesmo que estejam vazios ou com erro
-    current_insights = st.session_state.denuncia_completa.get('insights_ia', {})
-    # current_analise_imagem = st.session_state.denuncia_completa.get('analise_imagem_ia', {}) # REMOVIDO
-    if st.session_state.gemini_model:
-        st.session_state.denuncia_completa['urgencia_ia'] = categorizar_urgencia_gemini(
+        # Rodar categorização de urgência
+        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior
+        urgencia_result = categorizar_urgencia_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
-            current_insights,
-            # current_analise_imagem, # REMOVIDO
+            insights_result, # Passa o resultado da análise de insights
             st.session_state.gemini_model
         )
-    else:
-        st.warning("⚠️ Modelo Google Gemini Text não inicializado. Sugestão de urgência por IA desabilitada.")
-        st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "Sugestão de urgência via IA indisponível."}
+        st.session_state.denuncia_completa['urgencia_ia'] = urgencia_result
 
 
-    # Rodar sugestão de causa e ação
-    if st.session_state.gemini_model:
-        st.session_state.denuncia_completa['sugestao_acao_ia'] = sugerir_causa_e_acao_gemini(
+        # Rodar sugestão de causa e ação
+        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior
+        sugestao_acao_result = sugerir_causa_e_acao_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
-            current_insights,
-            # current_analise_imagem, # REMOVIDO
+            insights_result, # Passa o resultado da análise de insights
             st.session_state.gemini_model
         )
-    else:
-        st.warning("⚠️ Modelo Google Gemini Text não inicializado. Sugestões de causa/ação por IA desabilitadas.")
-        st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "Sugestões de causa/ação via IA indisponíveis."}
+        st.session_state.denuncia_completa['sugestao_acao_ia'] = sugestao_acao_result
 
 
-    # Gerar resumo completo
-    if st.session_state.gemini_model:
-        st.session_state.denuncia_completa['resumo_ia'] = gerar_resumo_completo_gemini(
+        # Gerar resumo completo
+        # Passa o modelo Gemini (pode ser None) E os resultados das análises anteriores
+        resumo_result = gerar_resumo_completo_gemini(
             st.session_state.denuncia_completa, # Passa todos os dados
+            insights_result, # Passa o resultado da análise de insights
+            urgencia_result, # Passa o resultado da sugestão de urgência
+            sugestao_acao_result, # Passa o resultado da sugestão de causa/ação
             st.session_state.gemini_model
         )
-    else:
-        st.warning("⚠️ Modelo Google Gemini Text não inicializado. Geração de resumo por IA desabilitada.")
-        st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "Resumo completo via IA indisponível."}
+        st.session_state.denuncia_completa['resumo_ia'] = resumo_result
 
-
-    # Avança para exibir o relatório após o processamento (mesmo que algumas IAs falhem/estejam indisponíveis)
-    next_step()
+        # Avança para exibir o relatório após o processamento (mesmo que algumas IAs falhem/estejam indisponíveis)
+    next_step() # Called outside the spinner, after all IA calls are attempted
 
 
 elif st.session_state.step == 'show_report':
@@ -1261,7 +1137,6 @@ elif st.session_state.step == 'show_report':
     imagem_data = buraco.get('imagem_denuncia') # Dados da imagem
     localizacao_exata = dados_completos.get('localizacao_exata_processada', {})
     insights_ia = dados_completos.get('insights_ia', {})
-    # analise_imagem_ia = dados_completos.get('analise_imagem_ia', {}) # REMOVIDO
     urgencia_ia = dados_completos.get('urgencia_ia', {})
     sugestao_acao_ia = dados_completos.get('sugestao_acao_ia', {})
     resumo_ia = dados_completos.get('resumo_ia', {})
@@ -1398,8 +1273,6 @@ elif st.session_state.step == 'show_report':
             st.write(insights_ia.get('insights', 'Análise não realizada ou com erro.'))
 
         # Expandir de análise de imagem removido.
-        # with st.expander("👁️ Análise Visual do Buraco (IA Gemini Vision)", expanded=True): # REMOVIDO
-        #     st.write(analise_imagem_ia.get('analise_imagem', 'Análise não realizada ou com erro.')) # REMOVIDO
 
         with st.expander("🚦 Sugestão de Urgência (IA Gemini)", expanded=True):
             st.write(urgencia_ia.get('urgencia_ia', 'Sugestão de urgência não gerada ou com erro.'))
@@ -1420,7 +1293,7 @@ elif st.session_state.step == 'show_report':
     # Opção para reiniciar o processo
     if st.button("Iniciar Nova Denúncia"):
         # Limpa o estado da sessão para recomeçar (exceto as chaves API e modelos que são cache_resource)
-        keys_to_keep = ['api_keys_loaded', 'gemini_model', 'geocoding_api_key'] # Removido gemini_vision_model
+        keys_to_keep = ['api_keys_loaded', 'gemini_model', 'geocoding_api_key']
         all_keys = list(st.session_state.keys())
         for key in all_keys:
             if key not in keys_to_keep:
