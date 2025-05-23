@@ -3,7 +3,6 @@
 Krateras 🚧🚧🚧: O Especialista Robótico de Denúncia de Buracos (v10.1 - Estabilidade Reforçada Final)
 
 Bem-vindo à versão finalizada do Krateras, com estabilidade máxima e geolocalização completa!
-Análise de imagem por IA desativada (upload apenas para visualização), etapas consolidadas.
 
 Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Link.
 Objetivo: Coletar dados de denúncias de buracos com detalhes estruturados e observações,
@@ -117,7 +116,7 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
         st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text) estarão desabilitadas.")
     if not geocoding_key:
         st.warning("⚠️ Segredo 'geocoding_api_key' não encontrado nos Streamlit Secrets. Geocodificação automática e mapa Google Embed estarão desabilitados.")
-        #st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI\"\ngeocoding_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
+        st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI\"\ngeocoding_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
 
     return gemini_key, geocoding_key
 
