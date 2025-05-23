@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
-Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v10.0 - OpenStreetMap Detalhado Incorporado)
+Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos (v10.1 - Estabilidade Reforçada Final)
 
-Bem-vindo à versão finalizada do Krateras, com geolocalização aprimorada e robustez!
+Bem-vindo à versão finalizada do Krateras, com estabilidade máxima e geolocalização completa!
 Análise de imagem por IA desativada (upload apenas para visualização), etapas consolidadas.
 
-Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Embed/Link.
+Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Link.
 Objetivo: Coletar dados de denúncias de buracos com detalhes estruturados e observações,
 incluir imagem para referência visual, geocodificação, e gerar relatórios
 detalhados e priorizados com visualização de mapa.
 
-Vamos juntos consertar essas ruas! Incorporando visualizações geográficas detalhadas...
+Vamos juntos consertar essas ruas! Versão final calibrada para precisão e robustez!
 """
 
 import streamlit as st
@@ -465,8 +465,8 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
     # Acessando os resultados das análises anteriores passados como argumentos
     insights_texto = _insights_ia_result.get('insights', 'Análise da descrição/características não disponível ou com erro.')
     urgencia_ia_text = _urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')
-    sugestao_acao_ia_text = _sugestao_ia_result.get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.')
-
+    # Access _sugestao_acao_ia_result safely using the (variable or {}).get() pattern
+    sugestao_acao_ia_text = (_sugestao_acao_ia_result or {}).get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.') # Apply safe access here
 
     loc_info_resumo = "Localização exata não especificada ou processada."
     tipo_loc_processada = localizacao_exata.get('tipo', 'Não informada')
@@ -601,7 +601,7 @@ st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 if st.session_state.step == 'start':
     st.write("""
-    Olá! Krateras v10.0 entrando em órbita com **OpenStreetMap Detalhado Incorporado**! Sua missão, caso aceite: denunciar buracos na rua
+    Olá! Krateras v10.1 entrando em órbita com **Estabilidade Reforçada Final**! Sua missão, caso aceite: denunciar buracos na rua
     para que possam ser consertados. A segurança dos seus dados e a precisão da denúncia
     são nossas prioridades máximas.
 
@@ -779,7 +779,7 @@ elif st.session_state.step == 'collect_address':
                 # If manual entry was used, clear CEP info from buraco data state
                 # This ensures CEP is only kept if the CEP search was the LAST successful operation AND the user confirms via this form.
                 if st.session_state.get('cep_input_field_consolidated') and not st.session_state.get('cep_error_consolidated') and st.session_state.get('cep_success_message'):
-                     # If CEP search was successful and user confirmed, keep the CEP that was stored in buraco state.
+                     # CEP search was successful and user confirmed, keep the CEP that was stored in buraco state.
                      pass # CEP is already in st.session_state.buraco from the CEP search logic
                 else:
                      # Manual entry was used, or CEP failed. Clear potential old CEP info from buraco state.
@@ -1010,7 +1010,7 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                      if lat_manual is None and input_original_manual.startswith("http"):
                           st.info("ℹ️ Entrada manual é um link. Tentando extrair coordenadas (sujeito a formato do link)...")
                           # Try regex for Google Maps links (with @lat,lon) or search (with ?,query=lat,lon)
-                          match_maps_link = re.search(r'(?:/@|/search/\?api=1&query=)(-?\d+\.?\d*),(-?\d+\.?\d*)', input_original_input_processed) # Corrected variable name here
+                          match_maps_link = re.search(r'(?:/@|/search/\?api=1&query=)(-?\d+\.?\d*),(-?\d+\.?\d*)', input_original_manual)
                           if match_maps_link:
                               try:
                                   teste_lat = float(match_maps_link.group(1))
@@ -1122,10 +1122,10 @@ elif st.session_state.step == 'processing_ia':
 
     # Ensure IA result dicts exist in state before populating them with results
     # Initialize with default error/unavailable messages instead of empty dicts for clarity in report if IA fails
-    if 'insights_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['insights_ia'] = {"insights": "Análise de características/observações não realizada ou com erro."}
-    if 'urgencia_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "Sugestão de urgência não gerada ou com erro."}
-    if 'sugestao_acao_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "Sugestões de causa/ação não geradas ou com erro."}
-    if 'resumo_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "Resumo não gerado ou com erro."}
+    if 'insights_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['insights_ia'] = {"insights": "Análise de características/observações não realizada ou com error."}
+    if 'urgencia_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "Sugestão de urgência não gerada ou com error."}
+    if 'sugestao_acao_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "Sugestões de causa/ação não geradas ou com error."}
+    if 'resumo_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "Resumo não gerado ou com error."}
 
 
     # Use a spinner context manager for the whole processing block
@@ -1306,6 +1306,16 @@ elif st.session_state.step == 'show_report':
                  # Display the direct link below the embed
                  osm_link = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=18/{lat}/{lon}"
                  st.write(f"[Abrir no OpenStreetMap.org]({osm_link})")
+
+                 # Add the simple st.map version back as well for diversity
+                 st.markdown("---")
+                 st.write("**OpenStreetMap (Mapa Simplificado Streamlit):**")
+                 try:
+                     map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
+                     st.map(map_data, zoom=18, use_container_width=True) # Correct parameter
+                     st.info("ℹ️ Este é um mapa simplificado gerado diretamente no Streamlit usando dados OpenStreetMap.")
+                 except Exception as map_error:
+                      st.error(f"❌ Erro ao gerar visualização do mapa OpenStreetMap simplificado: {map_error}")
 
 
                  if localizacao_exata.get('endereco_formatado_api'):
