@@ -38,7 +38,7 @@ st.set_page_config(
 # Use columns to center the image
 col1, col2, col3 = st.columns([1, 2, 1]) # Adjust column ratios as needed
 with col2: # Place the image in the middle column
-    st.image(LOGO_URL, width=200) # Adjust width as needed
+    st.image(LOGO_URL, width=650) # Adjust width as needed
 
 
 # --- Estilos CSS Personalizados (Opcional, para um toque extra) ---
