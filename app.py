@@ -54,7 +54,7 @@ h1, h2, h3 {
     color: #4A90E2; /* Azul Cratera */
 }
 .stButton>button {
-    background-color: #50E3C2; /* Verde Robô */
+    background-color: #101217; 
     color: white;
     font-weight: bold;
     border-radius: 10px;
@@ -62,7 +62,7 @@ h1, h2, h3 {
     transition: all 0.2s ease-in-out;
 }
 .stButton>button:hover {
-    background-color: #00B894; /* Verde Robô Escuro */
+    background-color: #101217; 
     color: white;
 }
 .stTextInput, .stNumberInput, .stTextArea, .stRadio, .stSelectbox, .stFileUploader {
