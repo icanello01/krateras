@@ -604,7 +604,7 @@ def prev_step():
 
 # --- Layout Principal da Aplicação ---
 
-st.title("Krateras 🚧🚧🚧")
+#st.title("Krateras 🚧🚧🚧")
 st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 # --- Fluxo da Aplicação baseado no Estado ---
