@@ -1,8 +1,7 @@
 <div align="center">
   <img src="logo.png" alt="Logo do Projeto" width="500">
 </div>
-
-# Krateras 🚀✨🔒: O Especialista Robótico de Denúncia de Buracos
+🚧🚧🚧 O Especialista Robótico de Denúncia de Buracos 🚧🚧🚧
 
 [![Teste o app deployado no Streamlit](https://img.shields.io/badge/-Teste%20o%20app%20deployado%20no%20Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)](https://krateras.streamlit.app/)
 
