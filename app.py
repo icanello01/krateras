@@ -22,6 +22,10 @@ import pandas as pd
 import io
 import urllib.parse # Importado para lidar com URLs
 
+# Image URL provided by the user
+LOGO_URL = "https://raw.githubusercontent.com/icanello01/krateras/refs/heads/main/logo.png"
+
+
 # --- Configuração da Página Streamlit ---
 st.set_page_config(
     page_title="Krateras 🚧🚧🚧 - Denúncia de Buracos",
@@ -29,6 +33,13 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
+
+# --- Add the Logo ---
+# Use columns to center the image
+col1, col2, col3 = st.columns([1, 2, 1]) # Adjust column ratios as needed
+with col2: # Place the image in the middle column
+    st.image(LOGO_URL, width=200) # Adjust width as needed
+
 
 # --- Estilos CSS Personalizados (Opcional, para um toque extra) ---
 st.markdown("""
@@ -306,7 +317,7 @@ def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, An
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
         if not hasattr(response, 'candidates') or not response.candidates:
              block_reason = "Desconhecido"
-             if hasattr(response, 'prompt_feedback') and hasattr(response.prompt_feedback, 'block_reason'):
+             if hasattr(response.prompt_feedback, 'block_reason'):
                  block_reason = response.prompt_feedback.block_reason.name
              return {"insights": f"❌ Análise de características/observações bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
         return {"insights": response.text.strip()}
@@ -357,11 +368,11 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
     Escolha UMA Categoria de Urgência entre estas:
     - Urgência Baixa: Buraco pequeno, sem perigo aparente, em local de baixo tráfego. Principalmente estético ou pequeno incômodo.
     - Urgência Média: Tamanho razoável, pode causar leve incômodo ou dano menor (ex: pneu furado leve), em via secundária ou com tráfego moderado. Requer reparo em prazo razoável.
-    - Urgência Alta: Buraco grande, profundo, perigo CLARO e/ou frequente (risco de acidente mais sério, dano significativo a veículo, perigo para motos/bikes/pedestres), em via movimentada ou área de risco (escola, hospital, curva, subida/descida). Requer atenção RÁPIDA, possivelmente em poucos dias.
+    - Urgência Alta: Buraco grande, profundo, perigo CLARO e/ou frequente (risco de acidente mais sério, dano significativo a veículo, alto risco para moto/bike/pedestre), em via movimentada ou área de risco (escola, hospital, curva, subida/descida). Requer atenção RÁPida, possivelmente em poucos dias.
     - Urgência Imediata/Crítica: Buraco ENORME/muito profundo que causa acidentes CONSTANTES ou representa risco GRAVE e iminente a veículos ou pessoas (ex: cratera na pista principal, buraco em local de desvio impossível), afeta severamente a fluidez ou acessibilidade. Requer intervenção de EMERGÊNCIA (horas/poucas horas).
 
     Dados da Denúncia:
-    Localização Básica: Rua {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('rua', 'Não informada')}, Número Próximo/Referência: {_dados_denuncia.get('buraco', {}).get('numero_proximo', 'Não informado')}. Cidade: {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('cidade_buraco', 'Não informada')}, Estado: {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('estado_buraco', 'Não informado')}.
+    Localização Básica: Rua {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('rua', 'Não informada')}, Número Próximo/Referência: {_dados_denuncia.get('buraco', {}).get('numero_proximo', 'Não informado')}. Cidade: {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('cidade_buraco', 'Não informada')}, Estado: {_dados_denuncia.get('buraco', {}).get('estado_buraco', 'Não informado')}.
     {loc_contexto}
 
     Características Estruturadas Fornecidas:
@@ -383,7 +394,7 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
         if not hasattr(response, 'candidates') or not response.candidates:
              block_reason = "Desconhecido"
-             if hasattr(response, 'prompt_feedback') and hasattr(response.prompt_feedback, 'block_reason'):
+             if hasattr(response.prompt_feedback, 'block_reason'):
                  block_reason = response.prompt_feedback.block_reason.name
              return {"urgencia_ia": f"❌ Sugestão de urgência bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
         return {"urgencia_ia": response.text.strip()}
@@ -436,7 +447,7 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
         if not hasattr(response, 'candidates') or not response.candidates:
              block_reason = "Desconhecido"
-             if hasattr(response, 'prompt_feedback') and hasattr(response.prompt_feedback, 'block_reason'):
+             if hasattr(response.prompt_feedback, 'block_reason'):
                  block_reason = response.prompt_feedback.block_reason.name
              return {"sugestao_acao_ia": f"❌ Sugestão de causa/ação bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
         return {"sugestao_acao_ia": response.text.strip()}
@@ -463,7 +474,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
 
     # Acessando os resultados das análises anteriores passados como argumentos
     insights_texto = _insights_ia_result.get('insights', 'Análise da descrição/características não disponível ou com erro.')
-    urgencia_ia_text = _urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não disponível ou com erro.')
+    urgencia_ia_text = _urgencia_ia_result.get('urgencia_ia', 'Sugestão de urgência não gerada ou com erro.')
     # Access _sugestao_acao_ia_result safely using the (variable or {}).get() pattern
     sugestao_acao_ia_text = (_sugestao_acao_ia_result or {}).get('sugestao_acao_ia', 'Sugestões de causa/ação não disponíveis ou com erro.') # Apply safe access here
 
@@ -541,7 +552,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
         if not hasattr(response, 'candidates') or not response.candidates:
              block_reason = "Desconhecido"
-             if hasattr(response, 'prompt_feedback') and hasattr(response.prompt_feedback, 'block_reason'):
+             if hasattr(response.prompt_feedback, 'block_reason'):
                  block_reason = response.prompt_feedback.block_reason.name
              return {"resumo_ia": f"❌ Geração de resumo bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
         return {"resumo_ia": response.text.strip()}
@@ -617,7 +628,7 @@ if st.session_state.step == 'start':
     Clique em Iniciar para começarmos a coleta de dados.
     """)
 
-    
+
 
 
     if st.button("Iniciar Missão Denúncia!"):
