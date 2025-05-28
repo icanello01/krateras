@@ -4,7 +4,7 @@ Krateras 🚧🚧🚧: O Especialista Robótico de Denúncia de Buracos (v10.1 -
 
 Bem-vindo à versão finalizada do Krateras, com estabilidade máxima e geolocalização completa!
 
-Tecnologias: Python, Streamlit, Google Gemini API (Text ONLY), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Link.
+Tecnologias: Python, Streamlit, Google Gemini API (Text and Vision), Google Geocoding API, ViaCEP, Google Maps Embed, OpenStreetMap Link.
 Objetivo: Coletar dados de denúncias de buracos com detalhes estruturados e observações,
 incluir imagem para referência visual, geocodificação, e gerar relatórios
 detalhados e priorizados com visualização de mapa.
