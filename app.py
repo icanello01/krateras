@@ -25,7 +25,7 @@ import io
 import urllib.parse
 import subprocess
 import sys
-import textwrap # <--- ADICIONADO PARA CORRIGIR O ERRO DE TOKENIZE
+import textwrap
 
 def check_install_dependencies():
     try:
@@ -228,11 +228,17 @@ SAFETY_SETTINGS = [
 @st.cache_data(show_spinner="🧠 Analisando características e observações com IA Gemini...")
 def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, Any], _observacoes: str, _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
     if not _model: return {"insights": "🤖 Análise de descrição IA indisponível (Motor Gemini Text offline)."}
-    caracteristicas_formatadas = [f"- {k}: {', '.join(v) if isinstance(v, list) else v if v and v != 'Selecione' else 'Não informado'}" for k, v in _caracteristicas.items()]
+    caracteristicas_formatadas = []
+    for key, value in _caracteristicas.items():
+        if isinstance(value, list):
+            # Filtra 'Selecione' e itens vazios da lista antes de juntar
+            valid_items = [item for item in value if item and item != 'Selecione']
+            caracteristicas_formatadas.append(f"- {key}: {', '.join(valid_items) if valid_items else 'Não informado'}")
+        else:
+            caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
     caracteristicas_texto = "\n".join(caracteristicas_formatadas)
     observacoes_texto = _observacoes.strip() if _observacoes else "Nenhuma observação adicional fornecida."
 
-    # CORRIGIDO: Aplicado textwrap.dedent
     prompt = textwrap.dedent(f"""
         Analise as seguintes características estruturadas e observações adicionais de uma denúncia de buraco.
         Seu objetivo é consolidar estas informações e extrair insights CRUCIAIS para um sistema de denúncias de reparo público.
@@ -281,10 +287,17 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
     if input_original_loc != 'Não informado.': loc_contexto += f" Detalhes originais: '{input_original_loc}'."
     if tipo_loc in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Geocodificada (API)', 'Coordenadas Extraídas de Link (Manual)']:
         loc_contexto += f" Coords: {localizacao_exata.get('latitude')}, {localizacao_exata.get('longitude')}. Link: {localizacao_exata.get('google_maps_link_gerado', 'N/A')}."
-    caracteristicas_formatadas = [f"- {k}: {', '.join(v) if isinstance(v, list) else v if v and v != 'Selecione' else 'Não informado'}" for k, v in caracteristicas.items()]
+    
+    caracteristicas_formatadas = []
+    for key, value in caracteristicas.items():
+        if isinstance(value, list):
+            valid_items = [item for item in value if item and item != 'Selecione']
+            caracteristicas_formatadas.append(f"- {key}: {', '.join(valid_items) if valid_items else 'Não informado'}")
+        else:
+            caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
     caracteristicas_texto_prompt = "\n".join(caracteristicas_formatadas)
 
-    # CORRIGIDO: Aplicado textwrap.dedent
+
     prompt = textwrap.dedent(f"""
         Com base nos dados da denúncia (características, observações) e insights, sugira a MELHOR categoria de urgência.
         Categorias: Urgência Baixa, Urgência Média, Urgência Alta, Urgência Imediata/Crítica.
@@ -318,10 +331,16 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
     caracteristicas = _dados_denuncia.get('buraco', {}).get('caracteristicas_estruturadas', {})
     observacoes = _dados_denuncia.get('observacoes_adicionais', 'Sem observações.')
     insights_texto = _insights_ia_result.get('insights', 'Análise de insights não disponível.')
-    caracteristicas_formatadas = [f"- {k}: {', '.join(v) if isinstance(v, list) else v if v and v != 'Selecione' else 'Não informado'}" for k, v in caracteristicas.items()]
+    
+    caracteristicas_formatadas = []
+    for key, value in caracteristicas.items():
+        if isinstance(value, list):
+            valid_items = [item for item in value if item and item != 'Selecione']
+            caracteristicas_formatadas.append(f"- {key}: {', '.join(valid_items) if valid_items else 'Não informado'}")
+        else:
+            caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
     caracteristicas_texto_prompt = "\n".join(caracteristicas_formatadas)
 
-    # CORRIGIDO: Aplicado textwrap.dedent
     prompt = textwrap.dedent(f"""
         Com base nos dados (características, observações) e insights, sugira:
         1. PÓSSIVEIS CAUSAS para este buraco.
@@ -370,11 +389,18 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
          loc_info_resumo = f"Localização via descrição manual: '{localizacao_exata.get('descricao_manual', 'N/I')}'."
     if input_original_loc != 'N/I.': loc_info_resumo += f" (Input original: '{input_original_loc}')"
     if motivo_falha_geo_resumo: loc_info_resumo += f" (Nota: {motivo_falha_geo_resumo})"
-    caracteristicas_formatadas = [f"- {k}: {', '.join(v) if isinstance(v, list) else v if v and v != 'Selecione' else 'N/I'}" for k, v in caracteristicas.items()]
+    
+    caracteristicas_formatadas = []
+    for key, value in caracteristicas.items():
+        if isinstance(value, list):
+            valid_items = [item for item in value if item and item != 'Selecione']
+            caracteristicas_formatadas.append(f"- {key}: {', '.join(valid_items) if valid_items else 'Não informado'}")
+        else:
+            caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
     caracteristicas_texto_prompt = "\n".join(caracteristicas_formatadas)
+
     data_hora = _dados_denuncia_completa.get('metadata', {}).get('data_hora_utc', 'N/R')
 
-    # CORRIGIDO: Aplicado textwrap.dedent
     prompt = textwrap.dedent(f"""
         Gere um resumo narrativo conciso (máx. 10-12 frases) para a denúncia de buraco. Formal e objetivo.
         Inclua: Denunciante, localização (rua, ref, bairro, cidade, estado, CEP), localização EXATA processada, lado da rua, características, observações, pontos da Análise de Texto, SUGESTÃO de Urgência e Justificativa, SUGESTÕES de CAUSAS e AÇÃO.
@@ -539,14 +565,14 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
         st.subheader("📋 Características do Buraco")
         col1_d, col2_d = st.columns(2)
         with col1_d:
-             tamanho = st.selectbox("Tamanho:", ['Selecione', 'Pequeno', 'Médio', 'Grande', 'Enorme', 'Crítico'], key='t_b')
-             perigo = st.selectbox("Perigo:", ['Selecione', 'Baixo', 'Médio', 'Alto', 'Altíssimo'], key='p_b')
-             profundidade = st.selectbox("Profundidade:", ['Selecione', 'Raso', 'Médio', 'Fundo', 'Muito Fundo'], key='pr_b')
+             tamanho = st.selectbox("Tamanho:", ['Selecione', 'Pequeno (cabe um pneu)', 'Médio (maior que um pneu, mas cabe em uma faixa)', 'Grande (ocupa mais de uma faixa, difícil desviar)', 'Enorme (cratera, impede passagem)', 'Crítico (buraco na pista principal, risco iminente de acidente grave)'], key='t_b')
+             perigo = st.selectbox("Perigo:", ['Selecione', 'Baixo (principalmente estético, risco mínimo)', 'Médio (risco de dano leve ao pneu ou suspensão)', 'Alto (risco de acidente/dano sério para carro, alto risco para moto/bike/pedestre)', 'Altíssimo (risco grave e iminente de acidente, histórico de acidentes no local)'], key='p_b')
+             profundidade = st.selectbox("Profundidade:", ['Selecione', 'Raso (menos de 5 cm)', 'Médio (5-15 cm)', 'Fundo (15-30 cm)', 'Muito Fundo (mais de 30 cm / "engole" um pneu)'], key='pr_b')
         with col2_d:
-             agua = st.selectbox("Água/Alagamento:", ['Selecione', 'Seco', 'Pouca água', 'Muita água', 'Drenagem visível'], key='a_b')
-             trafego_key_form = 'traf_b_key' # Chave única para o selectbox
-             trafego = st.selectbox("Tráfego na Via:", ['Selecione', 'Muito Baixo', 'Baixo', 'Médio', 'Alto', 'Muito Alto'], key=trafego_key_form)
-             contexto_via = st.multiselect("Contexto da Via:", ['Reta', 'Curva', 'Cruzamento', 'Subida', 'Descida', 'Perto de faixa', 'Perto de semáforo/lombada', 'Área escolar', 'Área hospitalar', 'Área comercial', 'Via principal', 'Via secundária', 'Perto de ponto de ônibus', 'Perto de ciclovia'], key='c_b')
+             agua = st.selectbox("Água/Alagamento:", ['Selecione', 'Seco', 'Acumula pouca água', 'Acumula muita água (vira piscina)', 'Problema de drenagem visível (jato de água, nascente)'], key='a_b')
+             trafego_key_form = 'traf_b_key' 
+             trafego = st.selectbox("Tráfego na Via:", ['Selecione', 'Muito Baixo (rua local sem saída)', 'Baixo (rua residencial calma)', 'Médio (rua residencial/comercial com algum fluxo)', 'Alto (avenida movimentada, via de acesso)', 'Muito Alto (via expressa, anel viário)'], key=trafego_key_form)
+             contexto_via = st.multiselect("Contexto da Via:", ['Reta', 'Curva acentuada', 'Cruzamento/Esquina', 'Subida', 'Descida', 'Próximo a faixa de pedestre', 'Próximo a semáforo/lombada', 'Área escolar/Universitária', 'Área hospitalar/Saúde', 'Área comercial intensa', 'Via de acesso principal', 'Via secundária', 'Próximo a ponto de ônibus/transporte público', 'Próximo a ciclovia/ciclofaixa'], key='c_b')
         st.subheader("✍️ Localização Exata e Outros Detalhes")
         num_prox_key = 'num_prox_b_key'
         lado_rua_key = 'lado_rua_b_key'
@@ -723,12 +749,22 @@ elif st.session_state.step == 'show_report':
         st.write(f"**Estado:** {end.get('estado_buraco','N/I')}"); st.write(f"**CEP:** {bur.get('cep_informado','N/I')}")
         st.write(f"**Lado da Rua:** {bur.get('lado_rua','N/I')}")
     with st.expander("📋 Características e Observações (Denunciante)", expanded=True):
-         st.write("**Características:**"); carac_ex = {k:v for k,v in carac.items() if v and v!='Selecione' and (not isinstance(v,list) or any(i for i in v if i and i!='Selecione'))}
+         st.write("**Características:**")
+         carac_ex = {}
+         if isinstance(carac, dict): # Garantir que carac é um dicionário
+            carac_ex = {k:v for k,v in carac.items() if v and v!='Selecione' and (not isinstance(v,list) or any(i for i in v if i and i!='Selecione'))}
+         
          if carac_ex:
-             for k,v in carac_ex.items():
-                 st.write(f"- **{k}:** {', '.join(i for i in v if i and i!='Selecione') if isinstance(v,list) else v}")
+             for k,v_list in carac_ex.items():
+                 if isinstance(v_list, list):
+                     valid_v_items = [item for item in v_list if item and item != 'Selecione']
+                     if valid_v_items: # Só exibe se houver itens válidos
+                        st.write(f"- **{k}:** {', '.join(valid_v_items)}")
+                 else: # Não é lista, é um valor único
+                    st.write(f"- **{k}:** {v_list}")
          else: st.info("Nenhuma característica significativa selecionada.")
          st.write("**Observações:**"); st.info(obs if obs else 'N/A.')
+
     with st.expander("📍 Localização Exata Processada", expanded=True):
         tipo_loc_r = loc_exata.get('tipo','N/I'); st.write(f"**Tipo Coleta:** {tipo_loc_r}")
         if tipo_loc_r in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Geocodificada (API)', 'Coordenadas Extraídas de Link (Manual)']:
@@ -744,7 +780,12 @@ elif st.session_state.step == 'show_report':
                      elif not st.session_state.geocoding_api_key and link_g: st.info("Chave GeoAPI não fornecida. Mapa indisponível, só link.")
                      if link_g: st.markdown(f"[Abrir no Google Maps]({link_g})")
                  st.markdown("---"); st.write("**OpenStreetMap:**")
-                 delta_o, bbox_o = 0.005, f"{lon_r-delta_o},{lat_r-delta_o},{lon_r+delta_o},{lat_r+delta_o}"
+                 
+                 # CORREÇÃO APLICADA AQUI
+                 delta_o = 0.005 
+                 bbox_o = f"{lon_r-delta_o},{lat_r-delta_o},{lon_r+delta_o},{lat_r+delta_o}"
+                 # FIM DA CORREÇÃO
+
                  osm_emb_r = f"https://www.openstreetmap.org/export/embed.html?bbox={urllib.parse.quote(bbox_o)}&layer=mapnik&marker={urllib.parse.quote(f'{lat_r},{lon_r}')}"
                  try: st.components.v1.html(f'<iframe width="100%" height="450" src="{osm_emb_r}" allowfullscreen></iframe>', height=470)
                  except Exception as e_o: st.error(f"❌ Erro mapa OSM: {e_o}")
