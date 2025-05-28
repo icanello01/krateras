@@ -8,7 +8,7 @@ from typing import Dict, Any, Optional
 import streamlit as st
 from datetime import datetime
 
-# Configuração de logging mais detalhada
+# Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -52,7 +52,7 @@ class ImageAnalyzer:
             }
         }
 
-    def verificar_qualidade_imagem(self, image_bytes: bytes) -> Dict[str, Any]:
+    def check_image_quality(self, image_bytes: bytes) -> Dict[str, Any]:
         """
         Verifica se a imagem tem qualidade suficiente para análise.
         """
@@ -63,7 +63,7 @@ class ImageAnalyzer:
             problemas = []
             status = True
             
-            # Verifica dimensões mínimas
+            # Verifica dimensões
             if width < 200 or height < 200:
                 problemas.append("Resolução muito baixa (mínimo 200x200 pixels)")
                 status = False
@@ -96,147 +96,140 @@ class ImageAnalyzer:
                 "problemas": [f"Erro ao processar imagem: {str(e)}"]
             }
 
-def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[str, Any]:
-    """
-    Analisa uma imagem usando o modelo Gemini 1.5 Pro.
-    """
-    try:
-        # Configura o modelo
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel('gemini-1.5-pro-latest')  # Mudando para o modelo correto
-        
-        # Prepara a imagem como objeto PIL primeiro
-        image = Image.open(io.BytesIO(image_bytes))
-        
-        # Converte para RGB se necessário (alguns formatos como RGBA podem causar problemas)
-        if image.mode != 'RGB':
-            image = image.convert('RGB')
-        
-        # Salva em um buffer de bytes novo
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='JPEG')
-        img_byte_arr = img_byte_arr.getvalue()
-            
-        # Prompt para análise
-        prompt = """
-        Você é um especialista em análise de problemas em vias públicas.
-        Analise a imagem fornecida e forneça uma análise técnica detalhada sobre o buraco ou defeito na via.
-        
-        Siga EXATAMENTE este formato na sua resposta:
-
-        DESCRIÇÃO FÍSICA:
-        - Tamanho aparente do buraco:
-        - Forma e características:
-        - Profundidade estimada:
-        - Condições do asfalto ao redor:
-
-        AVALIAÇÃO DE SEVERIDADE:
-        - Nível: [BAIXO/MÉDIO/ALTO/CRÍTICO]
-        - Justificativa:
-
-        RISCOS IDENTIFICADOS:
-        - Para veículos:
-        - Para pedestres/ciclistas:
-        - Outros riscos:
-
-        CONDIÇÕES AGRAVANTES:
-        - Problemas adicionais:
-        - Fatores de risco:
-
-        RECOMENDAÇÕES:
-        - Tipo de intervenção:
-        - Urgência do reparo:
-        - Medidas temporárias:
+    def analyze_image_with_gemini(self, image_bytes: bytes, api_key: str) -> Dict[str, Any]:
         """
+        Analisa uma imagem usando o modelo Gemini Pro Vision.
+        """
+        try:
+            # Configura o modelo
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel('gemini-1.5-pro-latest')
+            
+            # Prepara a imagem
+            image = Image.open(io.BytesIO(image_bytes))
+            if image.mode != 'RGB':
+                image = image.convert('RGB')
+            
+            img_byte_arr = io.BytesIO()
+            image.save(img_byte_arr, format='JPEG')
+            img_byte_arr = img_byte_arr.getvalue()
+            
+            # Prompt para análise
+            prompt = """
+            Você é um especialista em análise de problemas em vias públicas.
+            Analise a imagem fornecida e forneça uma análise técnica detalhada sobre o buraco ou defeito na via.
+            
+            Siga EXATAMENTE este formato na sua resposta:
 
-        logger.info("Iniciando análise com Gemini Pro Vision...")
-        
-        # Configurações de geração mais conservadoras
-        generation_config = {
-            "temperature": 0.7,  # Aumentando a temperatura para mais criatividade
-            "top_p": 1.0,       # Aumentando para maior variedade
-            "top_k": 40,
-            "max_output_tokens": 2048,  # Aumentando o limite de tokens
-        }
-        
-        # Configurações de segurança mais permissivas
-        safety_settings = [
-            {
-                "category": "HARM_CATEGORY_HARASSMENT",
-                "threshold": "BLOCK_NONE"
-            },
-            {
-                "category": "HARM_CATEGORY_HATE_SPEECH",
-                "threshold": "BLOCK_NONE"
-            },
-            {
-                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-                "threshold": "BLOCK_NONE"
-            },
-            {
-                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
-                "threshold": "BLOCK_NONE"
+            DESCRIÇÃO FÍSICA:
+            - Tamanho aparente do buraco:
+            - Forma e características:
+            - Profundidade estimada:
+            - Condições do asfalto ao redor:
+
+            AVALIAÇÃO DE SEVERIDADE:
+            - Nível: [BAIXO/MÉDIO/ALTO/CRÍTICO]
+            - Justificativa:
+
+            RISCOS IDENTIFICADOS:
+            - Para veículos:
+            - Para pedestres/ciclistas:
+            - Outros riscos:
+
+            CONDIÇÕES AGRAVANTES:
+            - Problemas adicionais:
+            - Fatores de risco:
+
+            RECOMENDAÇÕES:
+            - Tipo de intervenção:
+            - Urgência do reparo:
+            - Medidas temporárias:
+            """
+
+            logger.info("Iniciando análise com Gemini Pro Vision...")
+            
+            generation_config = {
+                "temperature": 0.7,
+                "top_p": 1.0,
+                "top_k": 40,
+                "max_output_tokens": 2048,
             }
-        ]
-        
-        # Gera a análise com retry
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                logger.info(f"Tentativa {attempt + 1} de {max_retries}")
-                
-                # Cria o conteúdo da mensagem
-                message = genai.types.ContentDict(
-                    parts = [
-                        {"text": prompt},
-                        {
-                            "inline_data": {
-                                "mime_type": "image/jpeg",
-                                "data": base64.b64encode(img_byte_arr).decode('utf-8')
-                            }
-                        }
-                    ],
-                    role = "user"
-                )
-                
-                # Gera o conteúdo
-                response = model.generate_content(
-                    message,
-                    generation_config=generation_config,
-                    safety_settings=safety_settings,
-                    stream=False
-                )
-                
-                logger.info(f"Resposta recebida na tentativa {attempt + 1}")
-                logger.info(f"Response completo: {response}")
-                
-                if hasattr(response, 'text') and response.text:
-                    logger.info("Análise concluída com sucesso")
-                    return {
-                        "status": "success",
-                        "analise_visual": response.text.strip(),
-                        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-                    }
-                else:
-                    logger.warning(f"Resposta vazia na tentativa {attempt + 1}")
-                    if attempt == max_retries - 1:
-                        raise ValueError("Todas as tentativas retornaram resposta vazia")
-                    time.sleep(2)  # Espera 2 segundos antes da próxima tentativa
+            
+            safety_settings = [
+                {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                },
+                {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                }
+            ]
+            
+            # Sistema de retry
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    logger.info(f"Tentativa {attempt + 1} de {max_retries}")
                     
-            except Exception as e:
-                logger.error(f"Erro na tentativa {attempt + 1}: {str(e)}")
-                if attempt == max_retries - 1:
-                    raise
-                time.sleep(2)  # Espera 2 segundos antes da próxima tentativa
+                    message = genai.types.ContentDict(
+                        parts = [
+                            {"text": prompt},
+                            {
+                                "inline_data": {
+                                    "mime_type": "image/jpeg",
+                                    "data": base64.b64encode(img_byte_arr).decode('utf-8')
+                                }
+                            }
+                        ],
+                        role = "user"
+                    )
+                    
+                    response = model.generate_content(
+                        message,
+                        generation_config=generation_config,
+                        safety_settings=safety_settings,
+                        stream=False
+                    )
+                    
+                    logger.info(f"Resposta recebida na tentativa {attempt + 1}")
+                    
+                    if hasattr(response, 'text') and response.text:
+                        logger.info("Análise concluída com sucesso")
+                        return {
+                            "status": "success",
+                            "analise_visual": response.text.strip(),
+                            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                    else:
+                        logger.warning(f"Resposta vazia na tentativa {attempt + 1}")
+                        if attempt == max_retries - 1:
+                            raise ValueError("Todas as tentativas retornaram resposta vazia")
+                        time.sleep(2)
+                        
+                except Exception as e:
+                    logger.error(f"Erro na tentativa {attempt + 1}: {str(e)}")
+                    if attempt == max_retries - 1:
+                        raise
+                    time.sleep(2)
 
-    except Exception as e:
-        logger.error(f"Erro fatal na análise de imagem: {str(e)}")
-        return {
-            "status": "error",
-            "analise_visual": f"❌ Erro ao analisar imagem com IA: {str(e)}",
-            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        }
-    def extrair_nivel_severidade(self, analise: str) -> str:
+        except Exception as e:
+            logger.error(f"Erro fatal na análise de imagem: {str(e)}")
+            return {
+                "status": "error",
+                "analise_visual": f"❌ Erro ao analisar imagem com IA: {str(e)}",
+                "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            }
+
+    def extract_severity_level(self, analise: str) -> str:
         """
         Extrai o nível de severidade da análise.
         """
@@ -258,7 +251,7 @@ def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[s
         """
         return self.SEVERITY_COLORS.get(nivel, self.SEVERITY_COLORS["INDEFINIDO"])
 
-    def processar_analise_imagem(self, imagem_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    def analyze_image(self, imagem_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         Processa e exibe a análise de imagem.
         """
@@ -272,7 +265,7 @@ def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[s
             return None
             
         # Verifica qualidade da imagem
-        qualidade = self.verificar_qualidade_imagem(imagem_data['bytes'])
+        qualidade = self.check_image_quality(imagem_data['bytes'])
         if not qualidade["status"]:
             st.warning("⚠️ Aviso sobre a qualidade da imagem:")
             for problema in qualidade["problemas"]:
@@ -288,14 +281,14 @@ def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[s
             try:
                 logger.info(f"Processando imagem de {qualidade['size_kb']:.2f} KB")
                 
-                resultado_analise = self.analisar_imagem_com_gemini(
+                resultado_analise = self.analyze_image_with_gemini(
                     image_bytes=imagem_data['bytes'],
                     api_key=st.secrets["GOOGLE_API_KEY"]
                 )
 
                 if resultado_analise["status"] == "success":
                     # Extrai o nível de severidade
-                    nivel = self.extrair_nivel_severidade(resultado_analise["analise_visual"])
+                    nivel = self.extract_severity_level(resultado_analise["analise_visual"])
                     cor = self.get_severity_color(nivel)
 
                     # Exibe o resultado
@@ -334,7 +327,7 @@ def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[s
                 logger.error(f"Erro no processamento: {str(e)}")
                 return {"erro": error_msg}
 
-    def mostrar_feedback_analise(self, nivel: str) -> None:
+    def show_analysis_feedback(self, nivel: str) -> None:
         """
         Mostra feedback e recomendações baseadas no nível de severidade.
         """
@@ -349,8 +342,8 @@ def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[s
 # Funções para uso externo (mantendo compatibilidade com código existente)
 def processar_analise_imagem(imagem_data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     analyzer = ImageAnalyzer()
-    return analyzer.processar_analise_imagem(imagem_data)
+    return analyzer.analyze_image(imagem_data)
 
 def mostrar_feedback_analise(nivel: str) -> None:
     analyzer = ImageAnalyzer()
-    analyzer.mostrar_feedback_analise(nivel)
+    analyzer.show_analysis_feedback(nivel)
