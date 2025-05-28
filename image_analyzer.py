@@ -1,13 +1,18 @@
+import base64
+import time
+import logging
 import google.generativeai as genai
 from PIL import Image
 import io
 from typing import Dict, Any, Optional
 import streamlit as st
 from datetime import datetime
-import logging
 
-# Configuração de logging
-logging.basicConfig(level=logging.INFO)
+# Configuração de logging mais detalhada
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 class ImageAnalyzer:
@@ -91,104 +96,146 @@ class ImageAnalyzer:
                 "problemas": [f"Erro ao processar imagem: {str(e)}"]
             }
 
-    def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[str, Any]:
+def analisar_imagem_com_gemini(self, image_bytes: bytes, api_key: str) -> Dict[str, Any]:
+    """
+    Analisa uma imagem usando o modelo Gemini 1.5 Pro.
+    """
+    try:
+        # Configura o modelo
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-pro-latest')  # Mudando para o modelo correto
+        
+        # Prepara a imagem como objeto PIL primeiro
+        image = Image.open(io.BytesIO(image_bytes))
+        
+        # Converte para RGB se necessário (alguns formatos como RGBA podem causar problemas)
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+        
+        # Salva em um buffer de bytes novo
+        img_byte_arr = io.BytesIO()
+        image.save(img_byte_arr, format='JPEG')
+        img_byte_arr = img_byte_arr.getvalue()
+            
+        # Prompt para análise
+        prompt = """
+        Você é um especialista em análise de problemas em vias públicas.
+        Analise a imagem fornecida e forneça uma análise técnica detalhada sobre o buraco ou defeito na via.
+        
+        Siga EXATAMENTE este formato na sua resposta:
+
+        DESCRIÇÃO FÍSICA:
+        - Tamanho aparente do buraco:
+        - Forma e características:
+        - Profundidade estimada:
+        - Condições do asfalto ao redor:
+
+        AVALIAÇÃO DE SEVERIDADE:
+        - Nível: [BAIXO/MÉDIO/ALTO/CRÍTICO]
+        - Justificativa:
+
+        RISCOS IDENTIFICADOS:
+        - Para veículos:
+        - Para pedestres/ciclistas:
+        - Outros riscos:
+
+        CONDIÇÕES AGRAVANTES:
+        - Problemas adicionais:
+        - Fatores de risco:
+
+        RECOMENDAÇÕES:
+        - Tipo de intervenção:
+        - Urgência do reparo:
+        - Medidas temporárias:
         """
-        Analisa uma imagem usando o modelo Gemini 1.5 Flash.
-        """
-        try:
-            # Configura o modelo
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            
-            # Prepara a imagem
-            image_parts = [
-                {
-                    "mime_type": "image/jpeg",
-                    "data": image_bytes
-                }
-            ]
-            
-            # Prompt para análise
-            prompt = """
-            Você é um especialista em análise de problemas em vias públicas.
-            Analise a imagem fornecida e forneça uma análise técnica detalhada seguindo EXATAMENTE este formato:
 
-            DESCRIÇÃO FÍSICA:
-            - Tamanho aparente do buraco:
-            - Forma e características:
-            - Profundidade estimada:
-            - Condições do asfalto ao redor:
-
-            AVALIAÇÃO DE SEVERIDADE:
-            - Nível: [BAIXO/MÉDIO/ALTO/CRÍTICO]
-            - Justificativa:
-
-            RISCOS IDENTIFICADOS:
-            - Para veículos:
-            - Para pedestres/ciclistas:
-            - Outros riscos:
-
-            CONDIÇÕES AGRAVANTES:
-            - Problemas adicionais:
-            - Fatores de risco:
-
-            RECOMENDAÇÕES:
-            - Tipo de intervenção:
-            - Urgência do reparo:
-            - Medidas temporárias:
-            """
-
-            logger.info("Iniciando análise com Gemini 1.5 Flash...")
-            
-            # Configurações de geração
-            generation_config = {
-                "temperature": 0.4,
-                "top_p": 0.8,
-                "top_k": 40,
-                "max_output_tokens": 1024,
+        logger.info("Iniciando análise com Gemini Pro Vision...")
+        
+        # Configurações de geração mais conservadoras
+        generation_config = {
+            "temperature": 0.7,  # Aumentando a temperatura para mais criatividade
+            "top_p": 1.0,       # Aumentando para maior variedade
+            "top_k": 40,
+            "max_output_tokens": 2048,  # Aumentando o limite de tokens
+        }
+        
+        # Configurações de segurança mais permissivas
+        safety_settings = [
+            {
+                "category": "HARM_CATEGORY_HARASSMENT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_HATE_SPEECH",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                "threshold": "BLOCK_NONE"
+            },
+            {
+                "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                "threshold": "BLOCK_NONE"
             }
-            
-            # Configurações de segurança
-            safety_settings = [
-                {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-                {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-            ]
-            
-            # Gera a análise
-            response = model.generate_content(
-                [prompt, image_parts[0]],
-                generation_config=generation_config,
-                safety_settings=safety_settings,
-                stream=False
-            )
-            
-            logger.info(f"Status da resposta: {response.prompt_feedback}")
-            
-            if not response.text:
-                logger.error("Resposta da API não contém texto")
-                return {
-                    "status": "error",
-                    "analise_visual": "❌ Não foi possível gerar uma análise para esta imagem (resposta vazia)."
-                }
+        ]
+        
+        # Gera a análise com retry
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                logger.info(f"Tentativa {attempt + 1} de {max_retries}")
+                
+                # Cria o conteúdo da mensagem
+                message = genai.types.ContentDict(
+                    parts = [
+                        {"text": prompt},
+                        {
+                            "inline_data": {
+                                "mime_type": "image/jpeg",
+                                "data": base64.b64encode(img_byte_arr).decode('utf-8')
+                            }
+                        }
+                    ],
+                    role = "user"
+                )
+                
+                # Gera o conteúdo
+                response = model.generate_content(
+                    message,
+                    generation_config=generation_config,
+                    safety_settings=safety_settings,
+                    stream=False
+                )
+                
+                logger.info(f"Resposta recebida na tentativa {attempt + 1}")
+                logger.info(f"Response completo: {response}")
+                
+                if hasattr(response, 'text') and response.text:
+                    logger.info("Análise concluída com sucesso")
+                    return {
+                        "status": "success",
+                        "analise_visual": response.text.strip(),
+                        "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+                    }
+                else:
+                    logger.warning(f"Resposta vazia na tentativa {attempt + 1}")
+                    if attempt == max_retries - 1:
+                        raise ValueError("Todas as tentativas retornaram resposta vazia")
+                    time.sleep(2)  # Espera 2 segundos antes da próxima tentativa
+                    
+            except Exception as e:
+                logger.error(f"Erro na tentativa {attempt + 1}: {str(e)}")
+                if attempt == max_retries - 1:
+                    raise
+                time.sleep(2)  # Espera 2 segundos antes da próxima tentativa
 
-            logger.info("Análise concluída com sucesso")
-            
-            return {
-                "status": "success",
-                "analise_visual": response.text.strip(),
-                "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-            }
-
-        except Exception as e:
-            logger.error(f"Erro na análise de imagem: {str(e)}")
-            return {
-                "status": "error",
-                "analise_visual": f"❌ Erro ao analisar imagem com IA: {str(e)}",
-                "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-            }
-
+    except Exception as e:
+        logger.error(f"Erro fatal na análise de imagem: {str(e)}")
+        return {
+            "status": "error",
+            "analise_visual": f"❌ Erro ao analisar imagem com IA: {str(e)}",
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        }
     def extrair_nivel_severidade(self, analise: str) -> str:
         """
         Extrai o nível de severidade da análise.
