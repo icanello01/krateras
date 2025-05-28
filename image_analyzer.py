@@ -4,9 +4,10 @@ import logging
 import google.generativeai as genai
 from PIL import Image
 import io
-from typing import Dict, Any # Optional removido de Dict
+from typing import Dict, Any 
 import streamlit as st 
 from datetime import datetime
+import textwrap # <--- IMPORTAÇÃO ADICIONADA
 
 # Configuração de logging
 logging.basicConfig(
@@ -50,7 +51,7 @@ class ImageAnalyzer:
                 "mensagem": "Situação crítica que requer ação imediata!",
                 "prazo": "Recomenda-se resolução em 24 horas."
             },
-            "INDEFINIDO": { # Adicionado feedback para nível indefinido
+            "INDEFINIDO": { 
                 "icon": "ℹ️",
                 "mensagem": "Nível de severidade não pôde ser determinado a partir da análise visual.",
                 "prazo": "Verifique manualmente e defina a urgência."
@@ -76,11 +77,11 @@ class ImageAnalyzer:
             if tamanho_kb < 10:
                 problemas.append("Tamanho do arquivo muito pequeno (mínimo 10KB)")
                 status = False
-            elif tamanho_kb > 20000: # 20MB é um limite alto, Gemini Vision geralmente prefere < 4MB
+            elif tamanho_kb > 20000: 
                 problemas.append("Tamanho do arquivo muito grande (máximo 20MB, recomendado < 4MB)")
-                status = False # Manter como False se for realmente um problema para a API
+                status = False 
             
-            if width > 0 and height > 0: # Evitar divisão por zero
+            if width > 0 and height > 0: 
                 if max(width, height) / min(width, height) > 3 :
                     problemas.append("Proporção da imagem inadequada (máximo 3:1 ou 1:3)")
                     status = False
@@ -117,18 +118,13 @@ class ImageAnalyzer:
                 image_pil = image_pil.convert('RGB')
             
             img_byte_arr_jpeg = io.BytesIO()
-            # Adicionar otimização de qualidade para reduzir tamanho se necessário, mantendo qualidade razoável
             image_pil.save(img_byte_arr_jpeg, format='JPEG', quality=85, optimize=True)
             img_byte_arr_val = img_byte_arr_jpeg.getvalue()
 
-            # Verificar tamanho após compressão para JPEG
             tamanho_processado_kb = len(img_byte_arr_val) / 1024.0
             logger.info(f"Tamanho da imagem para API Gemini (após conversão JPEG): {tamanho_processado_kb:.2f} KB")
-            if tamanho_processado_kb > 3800: # Gemini Vision tem um limite de ~4MB para a imagem em si
+            if tamanho_processado_kb > 3800: 
                  logger.warning(f"Imagem para API ainda é grande ({tamanho_processado_kb:.2f} KB), pode causar problemas.")
-                 # Poderia retornar um erro aqui ou tentar redimensionar mais agressivamente
-                 # return {"status": "error", "analise_visual": "Imagem muito grande para processamento pela API após compressão.", "timestamp": timestamp_agora}
-
 
             prompt = textwrap.dedent("""
             Você é um especialista em análise de problemas em vias públicas.
@@ -183,7 +179,7 @@ class ImageAnalyzer:
                         {"text": prompt},
                         {
                             "inline_data": {
-                                "mime_type": "image/jpeg", # Enviando como JPEG
+                                "mime_type": "image/jpeg", 
                                 "data": base64.b64encode(img_byte_arr_val).decode('utf-8')
                             }
                         }
@@ -208,7 +204,7 @@ class ImageAnalyzer:
                                 "timestamp": timestamp_agora
                             }
                         time.sleep(2 + attempt) 
-                        continue # Próxima tentativa
+                        continue
 
                     text_content = None
                     if hasattr(response, 'text') and response.text is not None:
@@ -219,7 +215,7 @@ class ImageAnalyzer:
                         return {
                             "status": "success",
                             "analise_visual": text_content,
-                            "timestamp": timestamp_agora # Usar o timestamp do início da função
+                            "timestamp": timestamp_agora
                         }
                     else:
                         logger.warning(f"Resposta de texto vazia ou inválida na tentativa {attempt + 1} da API Gemini.")
@@ -237,8 +233,7 @@ class ImageAnalyzer:
                         "analise_visual": f"Falha ao obter análise da imagem da API Gemini após {max_retries} tentativas.",
                         "timestamp": timestamp_agora
                     }
-            # Se o loop terminar sem return (não deveria acontecer com a lógica acima)
-            return {
+            return { # Fallback se o loop terminar sem return (não deveria acontecer)
                 "status": "error", 
                 "analise_visual": "Falha inesperada no loop de tentativas da API Gemini.",
                 "timestamp": timestamp_agora
@@ -275,7 +270,7 @@ class ImageAnalyzer:
                                 return nivel_valido
                         logger.warning(f"Nível de severidade encontrado ('{nivel_texto}') mas não reconhecido. Linha: '{linha}'")
                         return "INDEFINIDO" 
-            logger.info(f"Padrão 'Nível:' não encontrado na análise para extração de severidade.") # Mudado para INFO
+            logger.info(f"Padrão 'Nível:' não encontrado na análise para extração de severidade.")
         except Exception as e:
             logger.error(f"Erro ao extrair nível de severidade: {str(e)}")
         return "INDEFINIDO"
@@ -284,7 +279,7 @@ class ImageAnalyzer:
     def get_severity_color(self, nivel: str) -> str:
         return self.SEVERITY_COLORS.get(nivel, self.SEVERITY_COLORS["INDEFINIDO"])
 
-    def analyze_image(self, imagem_data: Dict[str, Any]) -> Dict[str, Any]: # MUDADO: Retorno sempre Dict
+    def analyze_image(self, imagem_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Processa e exibe a análise de imagem.
         """
@@ -292,64 +287,57 @@ class ImageAnalyzer:
 
         if not imagem_data or 'bytes' not in imagem_data:
             msg = "Nenhuma imagem fornecida para análise."
-            st.error(f"❌ {msg}")
+            if hasattr(st, 'error'): st.error(f"❌ {msg}") # Só usa st se disponível
             logger.warning("analyze_image chamada sem imagem_data ou sem 'bytes'.")
             return {"status": "error", "analise_visual": msg, "timestamp_geral": timestamp_geral_inicio}
 
-        if "GOOGLE_API_KEY" not in st.secrets:
-            msg = "Chave da API Google (GOOGLE_API_KEY) não configurada nos segredos."
-            st.error(f"❌ {msg}")
-            logger.error("GOOGLE_API_KEY não encontrada nos segredos do Streamlit.")
+        # Acessar st.secrets apenas se st estiver disponível (para portabilidade)
+        api_key_from_secrets = None
+        if hasattr(st, 'secrets'):
+            api_key_from_secrets = st.secrets.get("GOOGLE_API_KEY")
+
+        if not api_key_from_secrets:
+            msg = "Chave da API Google (GOOGLE_API_KEY) não configurada."
+            if hasattr(st, 'error'): st.error(f"❌ {msg}")
+            logger.error("GOOGLE_API_KEY não encontrada.")
             return {"status": "error", "analise_visual": msg, "timestamp_geral": timestamp_geral_inicio}
             
         qualidade = self.check_image_quality(imagem_data['bytes'])
         logger.info(f"Qualidade da imagem: Status={qualidade['status']}, Problemas={qualidade.get('problemas', [])}, Tamanho KB: {qualidade.get('size_kb')}")
 
-
         if not qualidade["status"]:
-            st.warning("⚠️ Aviso sobre a qualidade da imagem:")
+            if hasattr(st, 'warning'): st.warning("⚠️ Aviso sobre a qualidade da imagem:")
             for problema in qualidade["problemas"]:
-                st.write(f"- {problema}")
+                if hasattr(st, 'write'): st.write(f"- {problema}")
             
-            # Usar uma chave única para o botão para evitar problemas de estado do Streamlit
-            if not st.button("Continuar com a análise mesmo assim", key=f"continuar_qualidade_ruim_{int(time.time())}"):
+            continuar_analise = True # Default para True se não estiver em contexto Streamlit
+            if hasattr(st, 'button'):
+                if not st.button("Continuar com a análise mesmo assim", key=f"continuar_qualidade_ruim_{int(time.time())}"):
+                    continuar_analise = False
+            
+            if not continuar_analise:
                 msg = "Usuário optou por não continuar devido à qualidade da imagem."
                 logger.info(msg)
                 return {
                     "status": "skipped", 
                     "analise_visual": msg, 
-                    "qualidade_imagem": qualidade, # Inclui info da qualidade
+                    "qualidade_imagem": qualidade,
                     "timestamp_geral": timestamp_geral_inicio
                 } 
+            if hasattr(st, 'warning'): st.warning("Prosseguindo com a análise, mas os resultados podem não ser ideais.")
 
-            st.warning("Prosseguindo com a análise, mas os resultados podem não ser ideais.")
-
-        # Análise da imagem
-        # O spinner já é gerenciado pelo image_analyzer se chamado de um app Streamlit.
-        # Se este módulo for usado fora do Streamlit, o spinner não aparecerá, o que é ok.
-        # Usar st.spinner aqui pode causar spinners aninhados se o app.py também usar.
-        # É melhor deixar o app.py gerenciar o spinner principal.
-        # No entanto, para feedback visual que esta parte está rodando:
-        if hasattr(st, 'spinner'): # Checa se estamos em um contexto Streamlit
-            spinner_msg = "🔍 Analisando imagem com IA (Krateras Image Analyzer)..."
-        else:
-            spinner_msg = None # Não usar spinner se não for Streamlit
-
+        spinner_active = False
         try:
-            if spinner_msg:
-                with st.spinner(spinner_msg):
-                    logger.info(f"Iniciando análise da imagem de {qualidade.get('size_kb', 0):.2f} KB com Gemini.")
-                    resultado_analise_gemini = self.analyze_image_with_gemini(
-                        image_bytes=imagem_data['bytes'],
-                        api_key=st.secrets["GOOGLE_API_KEY"]
-                    )
-            else: # Executa sem spinner
-                logger.info(f"Iniciando análise da imagem de {qualidade.get('size_kb', 0):.2f} KB com Gemini (sem spinner st).")
-                resultado_analise_gemini = self.analyze_image_with_gemini(
-                    image_bytes=imagem_data['bytes'],
-                    api_key=st.secrets["GOOGLE_API_KEY"]
-                )
-
+            if hasattr(st, 'spinner'):
+                spinner_context = st.spinner("🔍 Analisando imagem com IA (Krateras Image Analyzer)...")
+                spinner_context.__enter__()
+                spinner_active = True
+            
+            logger.info(f"Iniciando análise da imagem de {qualidade.get('size_kb', 0):.2f} KB com Gemini.")
+            resultado_analise_gemini = self.analyze_image_with_gemini(
+                image_bytes=imagem_data['bytes'],
+                api_key=api_key_from_secrets # Passa a chave lida
+            )
 
             if resultado_analise_gemini and resultado_analise_gemini.get("status") == "success":
                 analise_texto_visual = resultado_analise_gemini["analise_visual"]
@@ -357,17 +345,17 @@ class ImageAnalyzer:
                 cor = self.get_severity_color(nivel)
                 logger.info(f"Análise visual bem-sucedida. Nível de severidade extraído: {nivel}")
 
-                # A UI de sucesso é gerenciada pelo image_analyzer.py
-                st.success("✅ Análise de imagem concluída pelo Krateras Image Analyzer!")
-                st.markdown(
-                    f"""<div style='padding: 10px; border-radius: 5px; background-color: {cor}; color: white; text-align: center;'>
-                        <h3 style='margin: 0;'>Nível de Severidade (Análise Visual): {nivel}</h3>
-                    </div><br>""", unsafe_allow_html=True)
-                st.markdown("### Análise Técnica Visual Detalhada (IA)")
-                st.markdown(analise_texto_visual)
+                if hasattr(st, 'success'):
+                    st.success("✅ Análise de imagem concluída pelo Krateras Image Analyzer!")
+                    st.markdown(
+                        f"""<div style='padding: 10px; border-radius: 5px; background-color: {cor}; color: white; text-align: center;'>
+                            <h3 style='margin: 0;'>Nível de Severidade (Análise Visual): {nivel}</h3>
+                        </div><br>""", unsafe_allow_html=True)
+                    st.markdown("### Análise Técnica Visual Detalhada (IA)")
+                    st.markdown(analise_texto_visual)
 
                 resultado_final = {
-                    "status": "success", # ADICIONADO STATUS NO NÍVEL RAIZ
+                    "status": "success", 
                     "analise_visual_ia": resultado_analise_gemini, 
                     "nivel_severidade": nivel,
                     "cor_severidade": cor,
@@ -377,42 +365,44 @@ class ImageAnalyzer:
                 return resultado_final
             else:
                 erro_msg = resultado_analise_gemini.get("analise_visual", "Erro desconhecido na análise com IA Gemini.")
-                st.error(f"Falha na análise com IA Gemini: {erro_msg}")
+                if hasattr(st, 'error'): st.error(f"Falha na análise com IA Gemini: {erro_msg}")
                 logger.error(f"Falha reportada por analyze_image_with_gemini: {erro_msg}")
                 return {
                     "status": "error", 
                     "analise_visual": erro_msg, 
-                    "qualidade_imagem": qualidade, # Inclui info da qualidade mesmo em erro
+                    "qualidade_imagem": qualidade,
                     "timestamp_geral": timestamp_geral_inicio
                 }
-
         except Exception as e: 
             error_msg = f"❌ Erro inesperado durante o processo de análise da imagem: {str(e)}"
-            st.error(error_msg)
+            if hasattr(st, 'error'): st.error(error_msg)
             logger.error(f"Erro no método analyze_image: {str(e)}", exc_info=True)
             return {
                 "status": "error", 
                 "analise_visual": error_msg,
-                "qualidade_imagem": qualidade, # Inclui info da qualidade mesmo em erro
+                "qualidade_imagem": qualidade, 
                 "timestamp_geral": timestamp_geral_inicio
             }
+        finally:
+            if spinner_active:
+                spinner_context.__exit__(None, None, None)
+
 
     def show_analysis_feedback(self, nivel: str) -> None:
         """
         Mostra feedback e recomendações baseadas no nível de severidade.
         """
-        # Usa get com um dicionário padrão para o caso de 'INDEFINIDO' ou outro nível não mapeado
         info = self.FEEDBACK_INFO.get(nivel, self.FEEDBACK_INFO.get("INDEFINIDO", {
             "icon": "ℹ️",
             "mensagem": "Nível de severidade não determinado ou feedback não disponível.",
             "prazo": "Prazo não definido."
         }))
-
-        st.info(f"{info['icon']} **{info['mensagem']}**\n\n*Prazo recomendado para resolução: {info['prazo']}*")
+        if hasattr(st, 'info'): # Só mostra se estiver em contexto Streamlit
+            st.info(f"{info['icon']} **{info['mensagem']}**\n\n*Prazo recomendado para resolução: {info['prazo']}*")
 
 
 # Funções wrapper para uso externo
-def processar_analise_imagem(imagem_data: Dict[str, Any]) -> Dict[str, Any]: # MUDADO: Retorno sempre Dict
+def processar_analise_imagem(imagem_data: Dict[str, Any]) -> Dict[str, Any]:
     analyzer = ImageAnalyzer()
     return analyzer.analyze_image(imagem_data)
 
