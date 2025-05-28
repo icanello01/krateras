@@ -23,6 +23,25 @@ import json
 import pandas as pd
 import io
 import urllib.parse # Importado para lidar com URLs
+# Auto-instalação de dependências
+import subprocess
+import sys
+
+def check_install_dependencies():
+    try:
+        import google.adk
+    except ImportError:
+        st.info("🔧 Instalando dependências necessárias...")
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+            st.success("✅ Dependências instaladas com sucesso! Reiniciando aplicação...")
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Erro ao instalar dependências: {str(e)}")
+            st.stop()
+
+# Chamar a função logo no início
+check_install_dependencies()
 
 # Image URL provided by the user
 LOGO_URL = "https://raw.githubusercontent.com/icanello01/krateras/refs/heads/main/logo.png"
