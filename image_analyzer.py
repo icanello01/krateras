@@ -103,7 +103,7 @@ class ImageAnalyzer:
         try:
             # Configura o modelo
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-pro-latest')
+            model = genai.GenerativeModel('gemini-1.5-flash-latest')
             
             # Prepara a imagem
             image = Image.open(io.BytesIO(image_bytes))
