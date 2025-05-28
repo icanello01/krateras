@@ -15,7 +15,8 @@ Vamos juntos consertar essas ruas! Versão final calibrada para precisão e robu
 import streamlit as st
 import requests
 import google.generativeai as genai
-from typing import Dict, Any, Optional
+from datetime import datetime
+from typing import Dict, Any, Optional, Tuple
 import re
 import json
 import pandas as pd
@@ -109,6 +110,8 @@ if 'api_keys_loaded' not in st.session_state:
     st.session_state.api_keys_loaded = False
 if 'gemini_model' not in st.session_state:
     st.session_state.gemini_model = None
+if 'gemini_vision_model' not in st.session_state:
+    st.session_state.gemini_vision_model = None
 if 'geocoding_api_key' not in st.session_state:
     st.session_state.geocoding_api_key = None
 
@@ -510,6 +513,7 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
             caracteristicas_formatadas.append(f"- {key}: {value if value and value != 'Selecione' else 'Não informado'}")
     caracteristicas_texto_prompt = "\n".join(caracteristicas_formatadas)
 
+    data_hora = _dados_denuncia_completa.get('metadata', {}).get('data_hora_utc', 'Não registrada')
 
     prompt = f"""
     Gere um resumo narrativo conciso (máximo 10-12 frases) para a seguinte denúncia de buraco no aplicativo Krateras.
@@ -633,7 +637,11 @@ if st.session_state.step == 'start':
 
     if st.button("Iniciar Missão Denúncia!"):
         # Limpa o estado da denúncia completa ao iniciar uma nova
-        st.session_state.denuncia_completa = {}
+        st.session_state.denuncia_completa = {
+            "metadata": {
+                "data_hora_utc": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        }
         # Limpa estados específicos da coleta de endereço para garantir um início limpo
         st.session_state.cep_input_consolidated = ''
         st.session_state.cep_error_consolidated = False
@@ -645,9 +653,9 @@ if st.session_state.step == 'start':
             del st.session_state.buraco
         # Carregar chaves e inicializar APIs (cache_resource mantém os objetos model/key)
         gemini_api_key, geocoding_api_key = load_api_keys()
-        st.session_state.geocoding_api_key = geocoding_api_key # Armazena a chave de geocoding no estado
-        st.session_state.gemini_model = init_gemini_text_model(gemini_api_key) # Inicializa APENAS modelo de texto
-        st.session_state.api_keys_loaded = True # Marca que tentamos carregar as chaves
+        st.session_state.geocoding_api_key = geocoding_api_key
+        st.session_state.gemini_model, st.session_state.gemini_vision_model = init_gemini_text_model(gemini_api_key) 
+        st.session_state.api_keys_loaded = True
         next_step()
 
 elif st.session_state.step == 'collect_denunciante':
@@ -1127,8 +1135,16 @@ elif st.session_state.step == 'processing_ia':
 
     # Access data needed for IA functions
     buraco_data = st.session_state.denuncia_completa.get('buraco', {})
+    imagem_data = buraco_data.get('imagem_denuncia')
     caracteristicas = buraco_data.get('caracteristicas_estruturadas', {})
     observacoes = buraco_data.get('observacoes_adicionais', '')
+
+    if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
+    st.info("🔍 Iniciando análise visual da imagem com Gemini Vision...")
+    st.session_state.denuncia_completa['analise_visual_ia'] = analisar_imagem_buraco(
+        imagem_data['bytes'],
+        st.session_state.gemini_vision_model
+    )
 
     # Ensure IA result dicts exist in state before populating them with results
     # Initialize with default error/unavailable messages instead of empty dicts for clarity in report if IA fails
@@ -1198,6 +1214,8 @@ elif st.session_state.step == 'show_report':
     urgencia_ia = dados_completos.get('urgencia_ia', {})
     sugestao_acao_ia = dados_completos.get('sugestao_acao_ia', {})
     resumo_ia = dados_completos.get('resumo_ia', {})
+    data_hora = dados_completos.get('metadata', {}).get('data_hora_utc', 'Não registrada')
+    st.write(f"📅 Data/Hora do Registro (UTC): **{data_hora}**")
 
     st.markdown("---")
 
@@ -1357,13 +1375,22 @@ elif st.session_state.step == 'show_report':
                    st.image(io.BytesIO(imagem_data['bytes']), caption=imagem_data.get('filename', 'Imagem Carregada'), use_container_width=True)
                    st.write(f"**Nome do Arquivo:** {imagem_data.get('filename', 'Não informado')}")
                    st.write(f"**Tipo:** {imagem_data.get('type', 'Não informado')}")
-                   st.info("Esta imagem é incluída no relatório para referência visual, mas não foi analisada automaticamente por IA nesta versão.")
+                   st.info("Esta imagem é incluída no relatório para referência visual e será analisada pelo modelo Gemini Vision.")
               except Exception as e:
                    st.error(f"❌ Não foi possível exibir a imagem carregada: {e}")
          elif imagem_data and 'erro' in imagem_data:
               st.error(f"❌ Erro ao carregar a imagem: {imagem_data.get('erro', 'Detalhe desconhecido.')}")
          else:
-              st.info("Nenhuma imagem foi carregada para esta denúncia.")
+              st.info("ℹ️ Nenhuma imagem foi carregada para esta denúncia.")
+
+                 with st.expander("🔍 Análise Visual por IA (Gemini Vision)", expanded=True):
+        if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
+            analise_visual = dados_completos.get('analise_visual_ia', {}).get('analise_visual', 'Análise visual não realizada ou com erro.')
+            st.write(analise_visual)
+        elif not st.session_state.gemini_vision_model:
+            st.warning("⚠️ Análise visual por IA indisponível (Modelo Gemini Vision não inicializado)")
+        else:
+            st.info("ℹ️ Nenhuma imagem fornecida para análise visual.")
 
 
     st.markdown("---")
