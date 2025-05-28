@@ -567,8 +567,6 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
     except Exception as e:
         return {"resumo_ia": f"❌ Erro ao gerar resumo completo com IA: {e}"}
 
-@st.cache_data(show_spinner="🔍 Analisando imagem com IA Gemini Vision...")
-def analisar_imagem_buraco(image_bytes: bytes, _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
     """
     Utiliza o Gemini Vision para analisar a imagem do buraco.
     Retorna um dicionário com o resultado ou mensagem de erro.
@@ -1193,12 +1191,11 @@ elif st.session_state.step == 'processing_ia':
     caracteristicas = buraco_data.get('caracteristicas_estruturadas', {})
     observacoes = buraco_data.get('observacoes_adicionais', '')
 
-    if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
-        st.info("🔍 Iniciando análise visual da imagem com Gemini Vision...")
-        st.session_state.denuncia_completa['analise_visual_ia'] = analisar_imagem_buraco(
-            imagem_data['bytes'],
-            st.session_state.gemini_vision_model
-        )
+    if imagem_data and 'bytes' in imagem_data:
+    processar_analise_imagem(imagem_data)
+    
+    if 'nivel_severidade' in st.session_state.denuncia_completa:
+        mostrar_feedback_analise(st.session_state.denuncia_completa['nivel_severidade'])
 
     # Ensure IA result dicts exist in state before populating them with results
     # Initialize with default error/unavailable messages instead of empty dicts for clarity in report if IA fails
