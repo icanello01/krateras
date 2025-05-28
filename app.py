@@ -17,6 +17,7 @@ import requests
 import google.generativeai as genai
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
+# MODIFICADO: Importações do image_analyzer.py (já estavam corretas)
 from image_analyzer import processar_analise_imagem, mostrar_feedback_analise
 import re
 import json
@@ -29,19 +30,25 @@ import sys
 
 def check_install_dependencies():
     try:
-        import google.adk
+        import google.ai.generativelanguage # Tentar importar um submódulo específico
     except ImportError:
-        st.info("🔧 Instalando dependências necessárias...")
+        st.info("🔧 Instalando dependências necessárias (google-generativeai)...")
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-            st.success("✅ Dependências instaladas com sucesso! Reiniciando aplicação...")
-            st.rerun()
+            # Instalar apenas o google-generativeai se for o que falta para o ADK.
+            # Se 'requirements.txt' for mais complexo, mantenha-o.
+            # Por ora, vamos assumir que o problema é apenas com a família google-ai.
+            subprocess.check_call([sys.executable, "-m", "pip", "install", "google-generativeai", "Pillow"])
+            st.success("✅ Dependências instaladas com sucesso! Por favor, atualize a página (F5) ou reinicie o app se necessário.")
+            # st.rerun() pode ser problemático durante a instalação inicial em alguns ambientes.
+            # Instruir o usuário a recarregar é mais seguro.
+            st.stop() # Parar a execução para permitir que o usuário recarregue
         except Exception as e:
             st.error(f"❌ Erro ao instalar dependências: {str(e)}")
             st.stop()
 
 # Chamar a função logo no início
-check_install_dependencies()
+# check_install_dependencies() # REMOVIDO TEMPORARIAMENTE PARA FACILITAR TESTES LOCAIS SEM INSTALAÇÃO FORÇADA
+# Se você realmente precisar disso, descomente, mas pode ser intrusivo.
 
 # Image URL provided by the user
 LOGO_URL = "https://raw.githubusercontent.com/icanello01/krateras/refs/heads/main/logo.png"
@@ -57,9 +64,9 @@ st.set_page_config(
 
 # --- Add the Logo ---
 # Use columns to center the image
-col1, col2, col3 = st.columns([1, 2, 1]) # Adjust column ratios as needed
-with col2: # Place the image in the middle column
-    st.image(LOGO_URL, width=650) # Adjust width as needed
+col1_logo, col2_logo, col3_logo = st.columns([1, 2, 1]) # Ajuste conforme necessário
+with col2_logo: # Coloca a imagem na coluna do meio
+    st.image(LOGO_URL, width=650) # Ajuste a largura conforme necessário
 
 
 # --- Estilos CSS Personalizados (Opcional, para um toque extra) ---
@@ -92,16 +99,18 @@ h1, h2, h3 {
 .stSpinner > div > div {
     border-top-color: #4A90E2 !important;
 }
-.css-1aumqxt { /* Estilo para st.info */
+/* As classes CSS podem mudar com versões do Streamlit. Verifique com o inspetor do navegador. */
+/* Exemplo para st.info (pode precisar de ajuste) */
+div[data-testid="stInfo"] {
     border-left: 5px solid #4A90E2 !important;
 }
-.css-1r6cdft { /* Estilo para st.warning */
+div[data-testid="stWarning"] {
      border-left: 5px solid #F5A623 !important;
 }
-.css-t9s6qg { /* Estilo para st.error */
+div[data-testid="stError"] {
      border-left: 5px solid #D0021B !important;
 }
-.css-1u3jtzg { /* Estilo para st.success */
+div[data-testid="stSuccess"] {
      border-left: 5px solid #7ED321 !important;
 }
 /* Ajustes para expanders */
@@ -112,9 +121,10 @@ h1, h2, h3 {
 }
 /* Classe para ajustar o padding interno dos expanders */
 /* As classes exatas podem variar, inspecione o elemento se precisar refinar */
-.st-emotion-cache-s5fjsg, .st-emotion-cache-1njf35f {
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+/* .st-emotion-cache-s5fjsg, .st-emotion-cache-1njf35f { */ /* Classes antigas/específicas */
+div[data-testid="stExpander"] div[role="button"] + div { /* Tenta selecionar o corpo do expander */
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -130,8 +140,11 @@ if 'api_keys_loaded' not in st.session_state:
     st.session_state.api_keys_loaded = False
 if 'gemini_model' not in st.session_state:
     st.session_state.gemini_model = None
-if 'gemini_vision_model' not in st.session_state:
-    st.session_state.gemini_vision_model = None
+# MODIFICADO: gemini_vision_model não é mais explicitamente gerenciado aqui, pois image_analyzer.py lida com seu próprio modelo.
+# Se você ainda precisar de um modelo de visão separado para outras partes do app.py, mantenha-o.
+# Por ora, vou remover, assumindo que image_analyzer é o único consumidor de visão.
+# if 'gemini_vision_model' not in st.session_state:
+#    st.session_state.gemini_vision_model = None
 if 'geocoding_api_key' not in st.session_state:
     st.session_state.geocoding_api_key = None
 
@@ -147,55 +160,63 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
     geocoding_key = st.secrets.get('geocoding_api_key')
 
     if not gemini_key:
-        st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text) estarão desabilitadas.")
+        st.warning("⚠️ Segredo 'GOOGLE_API_KEY' não encontrado nos Streamlit Secrets. Funcionalidades de IA (Gemini Text e Análise de Imagem) estarão desabilitadas ou limitadas.")
     if not geocoding_key:
         st.warning("⚠️ Segredo 'geocoding_api_key' não encontrado nos Streamlit Secrets. Geocodificação automática e mapa Google Embed estarão desabilitados.")
-        st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI\"\ngeocoding_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
+        st.info("ℹ️ Para configurar os segredos, crie um arquivo `.streamlit/secrets.toml` na raiz do seu projeto Streamlit com:\n```toml\nGOOGLE_API_KEY = \"SUA_CHAVE_GEMINI_E_VISION\"\ngeocoding_api_key = \"SUA_CHAVE_GEOCODING\"\n```\nLembre-se que as APIs Geocoding e Gemini podem gerar custos. Ative-as no Google Cloud e verifique sua configuração de cobrança.")
 
     return gemini_key, geocoding_key
 
 # --- Inicializar APIs (Cacheado para performance) ---
 
 @st.cache_resource
-def init_gemini_text_model(api_key: Optional[str]) -> Tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]:
+def init_gemini_text_model(api_key: Optional[str]) -> Optional[genai.GenerativeModel]: # MODIFICADO: Retorna apenas o modelo de texto
     """Inicializa o modelo Google Gemini (Texto APENAS) com cache."""
     if not api_key:
         st.error("❌ ERRO na Fábrica de Modelos: Chave de API Gemini não fornecida.")
-        return None, None
+        return None
     try:
         genai.configure(api_key=api_key)
-        st.success("✅ Conexão com API Google Gemini estabelecida.")
+        # st.success("✅ Conexão com API Google Gemini estabelecida (para análise textual).") # Movido para após seleção
 
-        available_models = list(genai.list_models())
-        text_models = [m for m in available_models if 'generateContent' in m.supported_generation_methods]
+        # Listar modelos e filtrar por aqueles que suportam 'generateContent' (modelos de texto)
+        # e, opcionalmente, 'embedContent' se for usar para embeddings.
+        available_models_info = list(genai.list_models())
+        text_generation_models = [m for m in available_models_info if 'generateContent' in m.supported_generation_methods]
 
-        # Selecionar modelo de Texto preferencial
+
         text_model_obj: Optional[genai.GenerativeModel] = None
-        preferred_text_names = ['gemini-1.5-flash-latest', 'gemini-1.0-pro', 'gemini-pro']
-        for name in preferred_text_names:
-            # Verifica se o nome preferencial está na lista de modelos de texto disponíveis
-            found_model = next((m for m in text_models if m.name.endswith(name)), None)
-            if found_model:
-                text_model_obj = genai.GenerativeModel(found_model.name)
-                st.success(f"✅ Modelo de Texto Gemini selecionado: '{found_model.name.replace('models/', '')}'. A IA Textual está online!")
+        preferred_text_names = ['gemini-1.5-flash-latest', 'gemini-1.0-pro-latest', 'gemini-pro'] # Adicionado -latest
+        
+        selected_model_name = None
+        for name_suffix in preferred_text_names:
+            # Tenta encontrar um modelo cujo nome *termine* com o sufixo preferencial
+            # ex: models/gemini-1.5-flash-latest
+            found_model_info = next((m for m in text_generation_models if m.name.endswith(name_suffix)), None)
+            if found_model_info:
+                text_model_obj = genai.GenerativeModel(found_model_info.name)
+                selected_model_name = found_model_info.name.replace('models/', '')
+                st.success(f"✅ Modelo de Texto Gemini selecionado: '{selected_model_name}'. A IA Textual está online!")
                 break
+        
         if not text_model_obj:
-            if text_models:
-                # Fallback para o primeiro modelo de texto disponível
-                text_model_obj = genai.GenerativeModel(text_models[0].name)
-                st.warning(f"⚠️ AVISO: Modelos de texto Gemini preferenciais não encontrados. Usando fallback: '{text_models[0].name.replace('models/', '')}'.")
-            else:
-                 st.error("❌ ERRO na Fábrica de Modelos: Nenhum modelo de texto Gemini compatível encontrado na sua conta.")
-        vision_model_obj = None
-        if text_model_obj and 'gemini-pro-vision' in [m.name for m in available_models]:
-            vision_model_obj = genai.GenerativeModel('gemini-pro-vision')
-            st.success("✅ Modelo de Visão Gemini (gemini-pro-vision) inicializado com sucesso!")
-        return text_model_obj, vision_model_obj
+            if text_generation_models: # Se há modelos de texto, mas não os preferenciais
+                fallback_model_info = text_generation_models[0] # Pega o primeiro da lista
+                text_model_obj = genai.GenerativeModel(fallback_model_info.name)
+                selected_model_name = fallback_model_info.name.replace('models/', '')
+                st.warning(f"⚠️ AVISO: Modelos de texto Gemini preferenciais não encontrados. Usando fallback: '{selected_model_name}'.")
+            else: # Nenhum modelo de texto encontrado
+                 st.error("❌ ERRO na Fábrica de Modelos: Nenhum modelo de texto Gemini compatível ('generateContent') encontrado na sua conta.")
+                 return None # Retorna None se nenhum modelo de texto for encontrado
+
+        # MODIFICADO: A inicialização do modelo de visão foi removida daqui,
+        # pois image_analyzer.py lida com seu próprio modelo internamente.
+        return text_model_obj
 
     except Exception as e:
-        st.error(f"❌ ERRO no Painel de Controle Gemini: Falha na inicialização dos modelos Google Gemini. Verifique sua chave e status do serviço.")
+        st.error(f"❌ ERRO no Painel de Controle Gemini: Falha na inicialização do modelo de texto Google Gemini.")
         st.exception(e)
-        return None, None
+        return None
 
 
 # --- Funções de API Call ---
@@ -233,7 +254,9 @@ def geocodificar_endereco_uncached(rua: str, numero: str, cidade: str, estado: s
          return {"erro": "Dados de endereço insuficientes (requer rua, número, cidade, estado) para geocodificar."}
 
     address = f"{rua}, {numero}, {cidade}, {estado}"
-    url = f"https://maps.googleapis.com/maps/api/geocode/json?address={requests.utils.quote(address)}&key={api_key}"
+    # Usar urllib.parse.quote para endereços com caracteres especiais
+    url = f"https://maps.googleapis.com/maps/api/geocode/json?address={urllib.parse.quote(address)}&key={api_key}"
+
 
     try:
         response = requests.get(url, timeout=10) # Tempo menor para resposta rápida
@@ -255,13 +278,13 @@ def geocodificar_endereco_uncached(rua: str, numero: str, cidade: str, estado: s
                  error_msg = "Requisição inválida (endereço mal formatado?)."
             elif status == 'UNKNOWN_ERROR':
                  error_msg = "Erro desconhecido na API Geocoding."
-            else:
+            else: # Para outros status não explicitamente tratados
                  error_msg = f"Status da API: {status}. {error_msg}"
 
 
-            return {"erro": f"Geocodificação falhou. Status: {status}. Mensagem: {error_msg}"}
+            return {"erro": f"Geocodificação falhou. {error_msg}"} # Removido "Status:" do início para evitar duplicação
 
-        if not data['results']:
+        if not data['results']: # Checagem redundante, pois ZERO_RESULTS já é tratado, mas segura
              return {"erro": "Geocodificação falhou. Nenhum local exato encontrado para o endereço fornecido. Tente refinar o número ou referência."}
 
         location = data['results'][0]['geometry']['location']
@@ -341,12 +364,17 @@ def analisar_caracteristicas_e_observacoes_gemini(_caracteristicas: Dict[str, An
     """
     try:
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
-        if not hasattr(response, 'candidates') or not response.candidates:
-             block_reason = "Desconhecido"
-             if hasattr(response.prompt_feedback, 'block_reason'):
-                 block_reason = response.prompt_feedback.block_reason.name
-             return {"insights": f"❌ Análise de características/observações bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
-        return {"insights": response.text.strip()}
+        # Checagem mais robusta de bloqueio
+        if not response.parts: # Se não há 'parts', provavelmente foi bloqueado ou erro
+            block_reason = "Desconhecido"
+            finish_reason = "Não disponível"
+            if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                block_reason = response.prompt_feedback.block_reason.name if response.prompt_feedback.block_reason else "Não bloqueado diretamente, mas sem conteúdo"
+            if hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'finish_reason'):
+                finish_reason = response.candidates[0].finish_reason.name
+            return {"insights": f"❌ Análise de características/observações retornou sem conteúdo útil. Motivo do Bloqueio (se houver): {block_reason}. Motivo de Finalização: {finish_reason}."}
+
+        return {"insights": response.text.strip()} # response.text é um atalho para parts[0].text
     except Exception as e:
         return {"insights": f"❌ Erro ao analisar características/observações com IA: {e}"}
 
@@ -398,7 +426,7 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
     - Urgência Imediata/Crítica: Buraco ENORME/muito profundo que causa acidentes CONSTANTES ou representa risco GRAVE e iminente a veículos ou pessoas (ex: cratera na pista principal, buraco em local de desvio impossível), afeta severamente a fluidez ou acessibilidade. Requer intervenção de EMERGÊNCIA (horas/poucas horas).
 
     Dados da Denúncia:
-    Localização Básica: Rua {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('rua', 'Não informada')}, Número Próximo/Referência: {_dados_denuncia.get('buraco', {}).get('numero_proximo', 'Não informado')}. Cidade: {_dados_denuncia.get('buraco', {}).get('endereco', {}).get('cidade_buraco', 'Não informada')}, Estado: {_dados_denuncia.get('buraco', {}).get('estado_buraco', 'Não informado')}.
+    Localização Básica: Rua {(_dados_denuncia.get('buraco', {}).get('endereco', {})).get('rua', 'Não informada')}, Número Próximo/Referência: {(_dados_denuncia.get('buraco', {})).get('numero_proximo', 'Não informado')}. Cidade: {(_dados_denuncia.get('buraco', {}).get('endereco', {})).get('cidade_buraco', 'Não informada')}, Estado: {(_dados_denuncia.get('buraco', {}).get('endereco', {})).get('estado_buraco', 'Não informado')}.
     {loc_contexto}
 
     Características Estruturadas Fornecidas:
@@ -418,11 +446,14 @@ def categorizar_urgencia_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
     """
     try:
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
-        if not hasattr(response, 'candidates') or not response.candidates:
+        if not response.parts:
              block_reason = "Desconhecido"
-             if hasattr(response.prompt_feedback, 'block_reason'):
-                 block_reason = response.prompt_feedback.block_reason.name
-             return {"urgencia_ia": f"❌ Sugestão de urgência bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
+             finish_reason = "Não disponível"
+             if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                 block_reason = response.prompt_feedback.block_reason.name if response.prompt_feedback.block_reason else "Não bloqueado diretamente, mas sem conteúdo"
+             if hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'finish_reason'):
+                finish_reason = response.candidates[0].finish_reason.name
+             return {"urgencia_ia": f"❌ Sugestão de urgência bloqueada ou retornou sem conteúdo. Bloqueio: {block_reason}. Finalização: {finish_reason}."}
         return {"urgencia_ia": response.text.strip()}
     except Exception as e:
         return {"urgencia_ia": f"❌ Erro ao sugerir urgência com IA: {e}"}
@@ -471,11 +502,14 @@ def sugerir_causa_e_acao_gemini(_dados_denuncia: Dict[str, Any], _insights_ia_re
     """
     try:
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
-        if not hasattr(response, 'candidates') or not response.candidates:
+        if not response.parts:
              block_reason = "Desconhecido"
-             if hasattr(response.prompt_feedback, 'block_reason'):
-                 block_reason = response.prompt_feedback.block_reason.name
-             return {"sugestao_acao_ia": f"❌ Sugestão de causa/ação bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
+             finish_reason = "Não disponível"
+             if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                 block_reason = response.prompt_feedback.block_reason.name if response.prompt_feedback.block_reason else "Não bloqueado diretamente, mas sem conteúdo"
+             if hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'finish_reason'):
+                finish_reason = response.candidates[0].finish_reason.name
+             return {"sugestao_acao_ia": f"❌ Sugestão de causa/ação bloqueada ou retornou sem conteúdo. Bloqueio: {block_reason}. Finalização: {finish_reason}."}
         return {"sugestao_acao_ia": response.text.strip()}
     except Exception as e:
         return {"sugestao_acao_ia": f"❌ Erro ao sugerir causa/ação com IA: {e}"}
@@ -513,12 +547,18 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
          lat = localizacao_exata.get('latitude')
          lon = localizacao_exata.get('longitude')
          link_gerado = localizacao_exata.get('google_maps_link_gerado', 'Não disponível')
-         loc_info_resumo = f"Localização Exata: Coordenadas {lat}, {lon} (Obtida via: {tipo_loc_processada.replace(' (API)', ' API').replace('Manual', 'Manual').replace('Fornecidas/Extraídas', 'Manual')}). Link Google Maps: {link_gerado}."
+         # Corrigir como o tipo é apresentado no resumo
+         tipo_display = tipo_loc_processada.replace(' (API)', '').replace(' (Manual)', '').replace('Fornecidas/Extraídas', 'Manual')
+         loc_info_resumo = f"Localização Exata: Coordenadas {lat}, {lon} (Obtida via: {tipo_display}). Link Google Maps: {link_gerado}."
+
          if input_original_loc and input_original_loc != 'Não informado.':
              loc_info_resumo += f" (Input original: '{input_original_loc}')"
 
     elif tipo_loc_processada == 'Descrição Manual Detalhada':
-         loc_info_resumo = f"Localização via descrição manual detalhada: '{localizacao_exata.get('descricao_manual', 'Não informada')}'. (Input original: '{input_original_loc}')"
+         loc_info_resumo = f"Localização via descrição manual detalhada: '{localizacao_exata.get('descricao_manual', 'Não informada')}'."
+         if input_original_loc and input_original_loc != 'Não informado.':
+            loc_info_resumo += f" (Input original: '{input_original_loc}')"
+
 
     elif input_original_loc and input_original_loc != 'Não informado.' and tipo_loc_processada == 'Não informada':
          loc_info_resumo = f"Localização informada (tipo não detectado): '{input_original_loc}'."
@@ -577,11 +617,14 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
     """
     try:
         response = _model.generate_content(prompt, safety_settings=SAFETY_SETTINGS)
-        if not hasattr(response, 'candidates') or not response.candidates:
+        if not response.parts:
              block_reason = "Desconhecido"
-             if hasattr(response.prompt_feedback, 'block_reason'):
-                 block_reason = response.prompt_feedback.block_reason.name
-             return {"resumo_ia": f"❌ Geração de resumo bloqueada pelo filtro de segurança do Gemini. Motivo: {block_reason}"}
+             finish_reason = "Não disponível"
+             if hasattr(response, 'prompt_feedback') and response.prompt_feedback:
+                 block_reason = response.prompt_feedback.block_reason.name if response.prompt_feedback.block_reason else "Não bloqueado diretamente, mas sem conteúdo"
+             if hasattr(response, 'candidates') and response.candidates and hasattr(response.candidates[0], 'finish_reason'):
+                finish_reason = response.candidates[0].finish_reason.name
+             return {"resumo_ia": f"❌ Geração de resumo bloqueada ou retornou sem conteúdo. Bloqueio: {block_reason}. Finalização: {finish_reason}."}
         return {"resumo_ia": response.text.strip()}
     except Exception as e:
         return {"resumo_ia": f"❌ Erro ao gerar resumo completo com IA: {e}"}
@@ -631,7 +674,7 @@ def prev_step():
 
 # --- Layout Principal da Aplicação ---
 
-#st.title("Krateras 🚧🚧🚧")
+#st.title("Krateras 🚧🚧🚧") # Comentado pois o logo já tem o nome
 st.subheader("O Especialista Robótico de Denúncia de Buracos")
 
 # --- Fluxo da Aplicação baseado no Estado ---
@@ -646,10 +689,10 @@ if st.session_state.step == 'start':
     Uma imagem pode ser incluída no relatório final.
     A geolocalização no relatório agora inclui mapas Google Maps e OpenStreetMap incorporados e links diretos para referência visual.
 
-    Utilizamos inteligência artificial (Google Gemini Text) e APIs de localização (Google Geocoding,
-    ViaCEP) para coletar, analisar (via texto) e gerar um relatório detalhado para as autoridades competentes.
+    Utilizamos inteligência artificial (Google Gemini Text e Vision) e APIs de localização (Google Geocoding,
+    ViaCEP) para coletar, analisar e gerar um relatório detalhado para as autoridades competentes.
 
-    Fui criado com o que há de mais avançado em Programação, IA (Análise de Texto!), Design Inteligente,
+    Fui criado com o que há de mais avançado em Programação, IA (Análise de Texto e Imagem!), Design Inteligente,
     Matemática e Lógica Inabalável. Com acesso seguro às APIs, sou imparável.
 
     Clique em Iniciar para começarmos a coleta de dados.
@@ -677,7 +720,8 @@ if st.session_state.step == 'start':
         # Carregar chaves e inicializar APIs (cache_resource mantém os objetos model/key)
         gemini_api_key, geocoding_api_key = load_api_keys()
         st.session_state.geocoding_api_key = geocoding_api_key
-        st.session_state.gemini_model, st.session_state.gemini_vision_model = init_gemini_text_model(gemini_api_key) 
+        # MODIFICADO: init_gemini_text_model agora retorna apenas o modelo de texto
+        st.session_state.gemini_model = init_gemini_text_model(gemini_api_key)
         st.session_state.api_keys_loaded = True
         next_step()
 
@@ -694,7 +738,8 @@ elif st.session_state.step == 'collect_denunciante':
         # Adjusting number_input value handling for None
         current_idade = current_denunciante_data.get('idade')
         idade_value = current_idade if current_idade is not None else None # Use None directly
-        idade = st.number_input("Sua idade (opcional, aproximada 😉):", min_value=0, max_value=120, value=idade_value, help="Deixe em branco ou use 0 se não quiser informar.", key='idade_denunciante_input')
+        idade = st.number_input("Sua idade (opcional, aproximada 😉):", min_value=0, max_value=120, value=idade_value, format="%d", help="Deixe em branco ou use 0 se não quiser informar.", key='idade_denunciante_input')
+
         cidade_residencia = st.text_input("Em qual cidade você reside?:", value=current_denunciante_data.get('cidade_residencia', ''), key='cidade_residencia_denunciante')
 
         submitted = st.form_submit_button("Avançar (Dados Denunciante)")
@@ -723,14 +768,14 @@ elif st.session_state.step == 'collect_address':
     # This state is separate from denuncia_completa until submission for cleaner handling in this step.
     if 'buraco' not in st.session_state:
         st.session_state.buraco = {'endereco': {}}
-    if 'endereco' not in st.session_state.buraco:
+    if 'endereco' not in st.session_state.buraco: # Redundante se o acima for feito, mas seguro
          st.session_state.buraco['endereco'] = {}
 
     endereco_atual = st.session_state.buraco.get('endereco', {})
 
     # Initialize/manage CEP state
     if 'cep_input_consolidated' not in st.session_state:
-         st.session_state.cep_input_consolidated = ''
+         st.session_state.cep_input_consolidated = endereco_atual.get('cep_informado', '') # Pré-preenche se já existir
     if 'cep_error_consolidated' not in st.session_state:
          st.session_state.cep_error_consolidated = False
     if 'cep_success_message' not in st.session_state:
@@ -741,13 +786,19 @@ elif st.session_state.step == 'collect_address':
     # --- CEP Section ---
     st.subheader("Opção 1: Buscar por CEP")
     st.info("Digite o CEP para preencher automaticamente os campos de Rua, Bairro, Cidade e Estado. Você poderá corrigir os dados se necessário.")
-    col1, col2 = st.columns([3,1])
-    with col1:
-         cep_atual = st.text_input("Digite o CEP (apenas números):", max_chars=8, key='cep_input_field_consolidated', value=st.session_state.cep_input_consolidated, help="Ex: 12345678")
-    with col2:
+    col1_cep, col2_cep = st.columns([3,1])
+    with col1_cep:
+         # Usar st.session_state.cep_input_consolidated para o valor do campo, permite que ele persista
+         cep_input_val = st.text_input("Digite o CEP (apenas números):", max_chars=8, key='cep_input_field_consolidated_key', value=st.session_state.cep_input_consolidated, help="Ex: 12345678")
+         # Atualizar o estado do CEP se o valor do campo mudar
+         if cep_input_val != st.session_state.cep_input_consolidated:
+             st.session_state.cep_input_consolidated = cep_input_val
+
+
+    with col2_cep:
          # Button to trigger CEP search
-         if st.button("Buscar CEP", key='buscar_cep_button_consolidated'):
-             st.session_state.cep_input_consolidated = cep_atual # Store the input value
+         if st.button("Buscar CEP", key='buscar_cep_button_consolidated_key'):
+             # st.session_state.cep_input_consolidated já está atualizado pelo callback implícito ou input
              # Clear previous CEP messages
              st.session_state.cep_success_message = ''
              st.session_state.cep_error_message = ''
@@ -766,16 +817,17 @@ elif st.session_state.step == 'collect_address':
                      st.session_state.cep_success_message = ''
                      # Do NOT clear manual fields on CEP error, user might want to correct them
                      # endereco_atual remains as it was or as manually edited
-                 else:
+                 else: # Sucesso na busca por CEP
                      st.session_state.cep_error_consolidated = False
                      st.session_state.cep_error_message = ''
                      st.session_state.cep_success_message = "✅ Endereço Encontrado (ViaCEP)! Por favor, confirme ou corrija abaixo."
                      # Update buraco.endereco state and potentially the manual fields display
+                     # Esta atualização deve refletir nos campos do formulário abaixo devido ao st.rerun()
                      st.session_state.buraco['endereco'].update({
-                         'rua': dados_cep_result.get('logradouro', ''),
-                         'bairro': dados_cep_result.get('bairro', ''),
-                         'cidade_buraco': dados_cep_result.get('localidade', ''),
-                         'estado_buraco': dados_cep_result.get('uf', '')
+                         'rua': dados_cep_result.get('logradouro', st.session_state.buraco['endereco'].get('rua', '')), # Mantém o manual se ViaCEP não trouxer
+                         'bairro': dados_cep_result.get('bairro', st.session_state.buraco['endereco'].get('bairro', '')),
+                         'cidade_buraco': dados_cep_result.get('localidade', st.session_state.buraco['endereco'].get('cidade_buraco', '')),
+                         'estado_buraco': dados_cep_result.get('uf', st.session_state.buraco['endereco'].get('estado_buraco', ''))
                      })
                      # Store CEP in buraco data if search was successful
                      st.session_state.buraco['cep_informado'] = st.session_state.cep_input_consolidated
@@ -798,10 +850,10 @@ elif st.session_state.step == 'collect_address':
     # Wrap these in a form to allow validation and advancing the step
     with st.form("form_manual_address_submit"):
         # Use the current state (potentially updated by CEP) as initial value for manual fields
-        rua_manual = st.text_input("Nome completo da rua:", value=endereco_atual.get('rua', ''), key='rua_manual_buraco_form_submit', help="Ex: Rua das Acácias")
-        bairro_manual = st.text_input("Bairro onde está o buraco (opcional):", value=endereco_atual.get('bairro', ''), key='bairro_manual_buraco_form_submit', help="Ex: Centro")
-        cidade_manual = st.text_input("Cidade onde está o buraco:", value=endereco_atual.get('cidade_buraco', ''), key='cidade_manual_buraco_form_submit', help="Ex: Belo Horizonte")
-        estado_manual = st.text_input("Estado (UF) onde está o buraco:", value=endereco_atual.get('estado_buraco', ''), max_chars=2, key='estado_manual_buraco_form_submit', help="Ex: MG")
+        rua_manual = st.text_input("Nome completo da rua:", value=st.session_state.buraco.get('endereco', {}).get('rua', ''), key='rua_manual_buraco_form_submit_key', help="Ex: Rua das Acácias")
+        bairro_manual = st.text_input("Bairro onde está o buraco (opcional):", value=st.session_state.buraco.get('endereco', {}).get('bairro', ''), key='bairro_manual_buraco_form_submit_key', help="Ex: Centro")
+        cidade_manual = st.text_input("Cidade onde está o buraco:", value=st.session_state.buraco.get('endereco', {}).get('cidade_buraco', ''), key='cidade_manual_buraco_form_submit_key', help="Ex: Belo Horizonte")
+        estado_manual = st.text_input("Estado (UF) onde está o buraco:", value=st.session_state.buraco.get('endereco', {}).get('estado_buraco', ''), max_chars=2, key='estado_manual_buraco_form_submit_key', help="Ex: MG")
 
         # Use a single submit button to advance the step after confirming address
         submitted_address = st.form_submit_button("Confirmar Endereço Base e Avançar")
@@ -813,22 +865,28 @@ elif st.session_state.step == 'collect_address':
                 # Update the address in buraco.endereco state from the manual fields (most current values from the form)
                 st.session_state.buraco['endereco'] = {
                     'rua': rua_manual.strip(),
-                    'bairro': bairro_manual.strip(),
+                    'bairro': bairro_manual.strip(), # Pode ser vazio
                     'cidade_buraco': cidade_manual.strip(),
                     'estado_buraco': estado_manual.strip().upper()
                 }
-                # If manual entry was used, clear CEP info from buraco data state
-                # This ensures CEP is only kept if the CEP search was the LAST successful operation AND the user confirms via this form.
-                if st.session_state.get('cep_input_field_consolidated') and not st.session_state.get('cep_error_consolidated') and st.session_state.get('cep_success_message'):
-                     # CEP search was successful and user confirmed, keep the CEP that was stored in buraco state.
-                     pass # CEP is already in st.session_state.buraco from the CEP search logic
-                else:
-                     # Manual entry was used, or CEP failed. Clear potential old CEP info from buraco state.
-                     if 'cep_informado' in st.session_state.buraco:
-                          del st.session_state.buraco['cep_informado']
+                # CEP: Se o usuário digitou manualmente após uma busca por CEP bem-sucedida,
+                # o 'cep_informado' já está em st.session_state.buraco.
+                # Se a busca por CEP falhou, ou não foi feita, e o usuário preencheu manualmente,
+                # o CEP não estará lá (a menos que ele tenha digitado no campo de CEP e depois editado manualmente).
+                # Para garantir consistência, se o campo de input de CEP tiver um valor válido
+                # e a busca por CEP não teve sucesso (ou não foi feita), podemos adicionar esse CEP.
+                # Mas é mais simples confiar que o CEP já foi tratado corretamente pela lógica do botão "Buscar CEP".
+                # A lógica atual mantém 'cep_informado' se a busca foi bem-sucedida.
+                # Se a busca falhou e o usuário corrigiu os campos manualmente, 'cep_informado' não será definido
+                # a menos que o usuário também tenha digitado um CEP válido no campo de CEP.
+                # Para simplificar: se 'cep_input_consolidated' tem valor e 'cep_informado' não está setado,
+                # vamos assumir que o usuário quer que este CEP seja registrado.
+                if st.session_state.cep_input_consolidated and 'cep_informado' not in st.session_state.buraco:
+                     st.session_state.buraco['cep_informado'] = st.session_state.cep_input_consolidated
+
 
                 # Store the buraco data (including address and possibly cep) in the full denunciation state
-                st.session_state.denuncia_completa['buraco'] = st.session_state.buraco
+                st.session_state.denuncia_completa['buraco'] = st.session_state.buraco.copy() # Usar .copy()
                 # Clear the separate 'buraco' state managed within this step after transferring it
                 del st.session_state.buraco
 
@@ -844,13 +902,15 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
     st.subheader("Informações cruciais para a localização e análise!")
 
     # Access buraco data from the full denunciation state
+    # Usar .get para segurança, embora nesta etapa deva existir.
     buraco_data_current = st.session_state.denuncia_completa.get('buraco', {})
     endereco_basico = buraco_data_current.get('endereco', {})
 
     # Check if basic address info is present (safety check)
     if not endereco_basico or not endereco_basico.get('rua') or not endereco_basico.get('cidade_buraco') or not endereco_basico.get('estado_buraco'):
          st.error("❗ Erro interno: Informações básicas de endereço estão faltando. Por favor, volte para a etapa anterior.")
-         st.button("Voltar para Endereço Base", on_click=prev_step) # Provide a way back
+         if st.button("Voltar para Endereço Base", key="voltar_endereco_base_details_key"):
+             prev_step()
          st.stop() # Stop execution here if critical data is missing
 
 
@@ -864,98 +924,111 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
 
     with st.form("form_buraco_details_location"):
         st.subheader("📋 Características do Buraco (Escolha as opções)")
-        col1, col2 = st.columns(2)
-        with col1:
+        col1_details, col2_details = st.columns(2)
+        with col1_details:
              tamanho = st.selectbox(
                  "Tamanho Estimado:",
                  ['Selecione', 'Pequeno (cabe um pneu)', 'Médio (maior que um pneu, mas cabe em uma faixa)', 'Grande (ocupa mais de uma faixa, difícil desviar)', 'Enorme (cratera, impede passagem)', 'Crítico (buraco na pista principal, risco iminente de acidente grave)'],
-                 key='tamanho_buraco'
+                 key='tamanho_buraco', index=0 # Default to 'Selecione'
              )
              perigo = st.selectbox(
                  "Perigo Estimado:",
                  ['Selecione', 'Baixo (principalmente estético, risco mínimo)', 'Médio (risco de dano leve ao pneu ou suspensão)', 'Alto (risco de acidente/dano sério para carro, alto risco para moto/bike/pedestre)', 'Altíssimo (risco grave e iminente de acidente, histórico de acidentes no local)'],
-                 key='perigo_buraco'
+                 key='perigo_buraco', index=0
              )
              profundidade = st.selectbox(
                  "Profundidade Estimada:",
                  ['Selecione', 'Raso (menos de 5 cm)', 'Médio (5-15 cm)', 'Fundo (15-30 cm)', 'Muito Fundo (mais de 30 cm / "engole" um pneu)'],
-                 key='profundidade_buraco'
+                 key='profundidade_buraco', index=0
              )
-        with col2:
+        with col2_details:
              agua = st.selectbox(
                  "Presença de Água/Alagamento:",
                  ['Selecione', 'Seco', 'Acumula pouca água', 'Acumula muita água (vira piscina)', 'Problema de drenagem visível (jato de água, nascente)'],
-                 key='agua_buraco'
+                 key='agua_buraco', index=0
              )
              trafego = st.selectbox(
                  "Tráfego Estimado na Via:",
                  ['Selecione', 'Muito Baixo (rua local sem saída)', 'Baixo (rua residencial calma)', 'Médio (rua residencial/comercial com algum fluxo)', 'Alto (avenida movimentada, via de acesso)', 'Muito Alto (via expressa, anel viário)'],
-                 key='trafego_buraco'
+                 key='trafego_buraco_key', index=0 # Alterado a key para evitar conflito com st.session_state.trafego_buraco direto
              )
              contexto_via = st.multiselect(
                  "Contexto da Via (selecione um ou mais):",
                  ['Reta', 'Curva acentuada', 'Cruzamento/Esquina', 'Subida', 'Descida', 'Próximo a faixa de pedestre', 'Próximo a semáforo/lombada', 'Área escolar/Universitária', 'Área hospitalar/Saúde', 'Área comercial intensa', 'Via de acesso principal', 'Via secundária', 'Próximo a ponto de ônibus/transporte público', 'Próximo a ciclovia/ciclofaixa'],
-                 key='contexto_buraco'
+                 key='contexto_buraco', default=[] # Default to empty list
              )
 
         st.subheader("✍️ Localização Exata e Outros Detalhes")
         st.write("➡️ Utilize o número próximo ou ponto de referência para ajudar na geocodificação automática. Se falhar ou for impreciso, forneça COORDENADAS ou LINK do Google Maps com coordenadas.")
-        numero_proximo = st.text_input("Número do imóvel mais próximo ou ponto de referência (ESSENCIAL para precisão! Ex: 'Em frente ao 123', 'Esquina c/ Rua X', 'Entre os números 45 e 60'):", key='numero_proximo_buraco')
-        lado_rua = st.text_input("Lado da rua onde está o buraco (Ex: 'lado par', 'lado ímpar', 'lado direito (sentido centro)', 'lado esquerdo (sentido bairro)'):", key='lado_rua_buraco')
+        numero_proximo = st.text_input("Número do imóvel mais próximo ou ponto de referência (ESSENCIAL para precisão! Ex: 'Em frente ao 123', 'Esquina c/ Rua X', 'Entre os números 45 e 60'):", key='numero_proximo_buraco_key')
+        lado_rua = st.text_input("Lado da rua onde está o buraco (Ex: 'lado par', 'lado ímpar', 'lado direito (sentido centro)', 'lado esquerdo (sentido bairro)'):", key='lado_rua_buraco_key')
+
 
         st.markdown("""
-        <p>Localização EXATA (opcional, mas altamente recomendado se a geocodificação falhar):</p>
+        <p style="font-weight: bold;">Localização EXATA (opcional, mas altamente recomendado se a geocodificação falhar):</p>
         <p>A MELHOR forma é COPIAR AS COORDENADAS (Lat,Long) ou um LINK do Google Maps que as contenha.<br>
-        Sugestão: Abra o Google Maps, encontre o buraco, <strong>TOQUE/CLIQUE E SEGURE NO LOCAL PREOCUPANTE</strong>.
-        As coordenadas ou um link aparecerão na barra de busca ou ao compartilhar.</p>
-        <p>Alternativamente, uma DESCRIÇÃO MUITO DETALHADA do local EXATO no mapa (Ex: 'Exatamente 5 metros à esquerda do poste Y, em frente ao portão azul do nº 456').</p>
+        Sugestão: Abra o Google Maps, encontre o buraco, <strong>CLIQUE COM O BOTÃO DIREITO (PC) ou TOQUE E SEGURE (CELULAR) NO LOCAL EXATO</strong>.
+        As coordenadas ou um link para copiar aparecerão.</p>
+        <p>Alternativamente, uma DESCRIÇÃO MUITO DETALHADA do local EXATO (Ex: 'Exatamente 5 metros à esquerda do poste Y, em frente ao portão azul do nº 456').</p>
         """, unsafe_allow_html=True)
-        localizacao_manual_input = st.text_input("Insira COORDENADAS (Lat,Long), LINK do Maps com Coordenadas, OU DESCRIÇÃO DETALHADA manual:", key='localizacao_manual')
+        localizacao_manual_input = st.text_input("Insira COORDENADAS (Lat,Long), LINK do Maps com Coordenadas, OU DESCRIÇÃO DETALHADA manual:", key='localizacao_manual_key')
+
 
         st.subheader("📷 Foto do Buraco (Opcional, para referência visual no relatório)")
         st.write("Uma boa foto ajuda as equipes de reparo a identificar o problema rapidamente. Por favor, envie uma imagem clara.")
-        uploaded_image = st.file_uploader("Carregar Imagem do Buraco:", type=['jpg', 'jpeg', 'png', 'webp'], key='uploaded_image_buraco')
+        uploaded_image = st.file_uploader("Carregar Imagem do Buraco:", type=['jpg', 'jpeg', 'png', 'webp'], key='uploaded_image_buraco_key')
         if uploaded_image:
              st.info(f"Imagem '{uploaded_image.name}' carregada e será incluída no relatório.")
 
 
         st.subheader("📝 Observações Adicionais")
         st.write("Algo mais a acrescentar que não foi coberto pelas opções? Detalhes como: 'problema recorrente (há quanto tempo?)', 'surgiu depois da última chuva', 'muito difícil desviar à noite', 'causou X dano ao meu carro', 'vi um acidente aqui':")
-        observacoes_adicionais = st.text_area("Suas observações:", key='observacoes_buraco')
+        observacoes_adicionais = st.text_area("Suas observações:", key='observacoes_buraco_key')
 
 
         submitted = st.form_submit_button("Enviar Denúncia para Análise Robótica!")
 
         if submitted:
             # Validate required fields
-            required_selects = {'tamanho_buraco': 'Tamanho Estimado', 'perigo_buraco': 'Perigo Estimado', 'profundidade_buraco': 'Profundidade Estimada', 'agua_buraco': 'Presença de Água', 'trafego_buraco': 'Tráfego Estimado na Via'}
-            missing_selects = [label for key, label in required_selects.items() if st.session_state.get(key, 'Selecione') == 'Selecione'] # Use .get for safety
+            # Usar as keys corretas dos widgets do formulário
+            required_selects = {
+                'tamanho_buraco': 'Tamanho Estimado',
+                'perigo_buraco': 'Perigo Estimado',
+                'profundidade_buraco': 'Profundidade Estimada',
+                'agua_buraco': 'Presença de Água',
+                'trafego_buraco_key': 'Tráfego Estimado na Via' # Key correta
+            }
+            missing_selects = [label for key, label in required_selects.items() if st.session_state.get(key) == 'Selecione']
 
 
-            if not numero_proximo or not lado_rua or not observacoes_adicionais:
+            if not st.session_state.numero_proximo_buraco_key or not st.session_state.lado_rua_buraco_key or not st.session_state.observacoes_buraco_key:
                  st.error("❗ Número próximo/referência, Lado da rua e Observações adicionais são campos obrigatórios.")
             elif missing_selects:
                  st.error(f"❗ Por favor, selecione uma opção para os seguintes campos: {', '.join(missing_selects)}.")
             else:
                 # Update buraco data with details and observations
+                # Garantir que 'buraco' exista em denuncia_completa
+                if 'buraco' not in st.session_state.denuncia_completa:
+                    st.session_state.denuncia_completa['buraco'] = {}
+
                 st.session_state.denuncia_completa['buraco'].update({
-                    'numero_proximo': numero_proximo.strip(),
-                    'lado_rua': lado_rua.strip(),
+                    'numero_proximo': st.session_state.numero_proximo_buraco_key.strip(),
+                    'lado_rua': st.session_state.lado_rua_buraco_key.strip(),
                     'caracteristicas_estruturadas': {
-                         'Tamanho Estimado': tamanho,
-                         'Perigo Estimado': perigo,
-                         'Profundidade Estimada': profundidade,
-                         'Presença de Água/Alagamento': agua,
-                         'Tráfego Estimado na Via': st.session_state.get('trafego_buraco', 'Selecione'), # Use .get
-                         'Contexto da Via': contexto_via if contexto_via else [] # Ensure it's a list, can be empty
+                         'Tamanho Estimado': st.session_state.tamanho_buraco, # Acessar via st.session_state
+                         'Perigo Estimado': st.session_state.perigo_buraco,
+                         'Profundidade Estimada': st.session_state.profundidade_buraco,
+                         'Presença de Água/Alagamento': st.session_state.agua_buraco,
+                         'Tráfego Estimado na Via': st.session_state.trafego_buraco_key, # Usar a key correta
+                         'Contexto da Via': st.session_state.contexto_buraco if st.session_state.contexto_buraco else []
                     },
-                    'observacoes_adicionais': observacoes_adicionais.strip()
+                    'observacoes_adicionais': st.session_state.observacoes_buraco_key.strip()
                 })
 
                 # --- Processar Imagem Upload ---
                 # Clear previous image data before processing the new one
                 st.session_state.denuncia_completa['buraco']['imagem_denuncia'] = None
-                if uploaded_image is not None:
+                if uploaded_image is not None: # uploaded_image é o resultado do file_uploader
                     try:
                         # Read the image bytes
                         image_bytes = uploaded_image.getvalue()
@@ -981,7 +1054,8 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                 estado_buraco = endereco_basico.get('estado_buraco')
 
                 # Try to use the number/reference for geocoding
-                num_referencia_geo = numero_proximo.strip()
+                num_referencia_geo = st.session_state.numero_proximo_buraco_key.strip()
+
 
                 # We need Street, Number/Reference, City, State and Geocoding API Key to attempt auto-geocoding
                 tem_dados_para_geo_completo = (st.session_state.geocoding_api_key and rua_buraco and num_referencia_geo and cidade_buraco and estado_buraco)
@@ -1021,13 +1095,14 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                 # --- Processar Coordenadas/Link/Descrição Manual (if provided) ---
                 # This is done *regardless* of the success of automatic geocoding,
                 # as manual entry might be more accurate or correct the automatic one.
-                localizacao_manual_input_processed = localizacao_manual_input.strip()
+                localizacao_manual_val = st.session_state.localizacao_manual_key.strip() # Usar o valor do estado da sessão
                 lat_manual: Optional[float] = None
                 lon_manual: Optional[float] = None
                 tipo_manual_processado = "Descrição Manual Detalhada" # Assume manual description by default
-                input_original_manual = localizacao_manual_input_processed
+                input_original_manual = localizacao_manual_val
 
-                if localizacao_manual_input_processed:
+
+                if localizacao_manual_val:
                      # Regex to try to find coordinates in different formats (Lat,Lon or in common links)
                      # Tries to cover "lat,lon", "@lat,lon" in links, "lat lon"
                      # More robust regex: allows spaces or commas as separators, supports negative signs
@@ -1067,12 +1142,13 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                                  st.info("ℹ️ Valores no link não parecem coordenadas válidas. Tratando como descrição.")
                           else:
                                st.info("ℹ️ Não foi possível extrair coordenadas reconhecíveis do link do Maps fornecido manualmente.")
-                               lat_manual = None
+                               lat_manual = None # Garantir que resetamos se a extração do link falhar
                                lon_manual = None
-                               tipo_manual_processado = "Descrição Manual Detalhada"
+                               tipo_manual_processado = "Descrição Manual Detalhada" # Reafirmar
+
                      # If coordinates weren't found and it's not a link, it's a manual description
-                     elif lat_manual is None:
-                         st.info("ℹ️ Entrada manual não detectada como coordenadas ou link. Tratando como descrição detalhada.")
+                     elif lat_manual is None and not input_original_manual.startswith("http"): # Adicionado "not startswith http"
+                         st.info("ℹ️ Entrada manual não detectada como coordenadas ou link URL. Tratando como descrição detalhada.")
                          tipo_manual_processado = "Descrição Manual Detalhada"
 
 
@@ -1092,22 +1168,25 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
                          geocodificacao_sucesso_coords = True # We have coordinates (via manual)!
                          st.success(f"✅ Localização Exata Obtida (via Input Manual - {tipo_manual_processado})!")
                      # If manual input exists but isn't coordinates, store as manual description:
-                     elif localizacao_manual_input_processed:
+                     elif localizacao_manual_val: # localizacao_manual_val é o input.strip()
                          # Only set this if manual input was provided and NO coordinates were found by any method (auto or manual regex)
-                         if not geocodificacao_sucesso_coords and lat_manual is None and lon_manual is None: # Added check for manual lat/lon
+                         # E se a geocodificação automática também não teve sucesso
+                         if not geocodificacao_sucesso_coords: # Se ainda não temos coordenadas
                              st.session_state.denuncia_completa['localizacao_exata_processada'] = {
-                                  "tipo": "Descrição Manual Detalhada",
+                                  "tipo": "Descrição Manual Detalhada", # Já é o default, mas reafirma
                                   "input_original": input_original_manual,
                                   "descricao_manual": input_original_manual
                              }
-                             # geocodificacao_sucesso_coords remains False if auto-geo failed and manual didn't give coords
-                             st.info("ℹ️ Localização exata processada como Descrição Manual Detalhada.")
+                             # geocodificacao_sucesso_coords remains False
+                             st.info("ℹ️ Localização exata processada como Descrição Manual Detalhada (coordenadas não extraídas do input manual e geocodificação automática falhou ou não foi feita).")
                      # else: If manual input is empty, keep whatever came from auto-geocoding or the default "Não informada"
 
 
                 # --- Final check and setting the failure reason ---
                 # Check if the *final* processed location type is one that does NOT have coordinates
-                final_loc_type = st.session_state.denuncia_completa['localizacao_exata_processada'].get('tipo')
+                final_loc_data = st.session_state.denuncia_completa.get('localizacao_exata_processada', {})
+                final_loc_type = final_loc_data.get('tipo')
+
 
                 if final_loc_type not in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Coordenadas Extraídas de Link (Manual)', 'Geocodificada (API)']:
                      # If we ended up *without* coordinates, let's store the reason why we couldn't get them.
@@ -1125,102 +1204,127 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
 
                      # Reason 4: Manual input was given, but wasn't coordinates that could be extracted
                      # Only add this if manual input was provided AND it did NOT result in coordinates
-                     if localizacao_manual_input_processed and not (lat_manual is not None and lon_manual is not None):
+                     if localizacao_manual_val and not (lat_manual is not None and lon_manual is not None):
                           reason_parts.append("Coordenadas não encontradas ou extraídas do input manual.")
 
                      # Combine and store the reasons if any
                      if reason_parts:
-                          # Only update if the current processed type is not already 'Descrição Manual Detalhada'
-                          # or if it is, but we have new failure reasons to add.
-                          current_failure_reason = st.session_state.denuncia_completa['localizacao_exata_processada'].get('motivo_falha_geocodificacao_anterior', '')
+                          current_failure_reason = final_loc_data.get('motivo_falha_geocodificacao_anterior', '')
                           new_failure_reason = " / ".join(reason_parts)
-                          # Prevent adding redundant messages if it's already set to a specific error
-                          if 'motivo_falha_geocodificacao_anterior' not in st.session_state.denuncia_completa['localizacao_exata_processada'] or (current_failure_reason and new_failure_reason != current_failure_reason): # Check if current exists and is different
-                                st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = new_failure_reason
-                          elif not current_failure_reason and new_failure_reason: # If current is empty but new exists
-                               st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = new_failure_reason
 
-                     elif final_loc_type == "Não informada":
+                          if not current_failure_reason or new_failure_reason != current_failure_reason:
+                                final_loc_data['motivo_falha_geocodificacao_anterior'] = new_failure_reason
+                                st.session_state.denuncia_completa['localizacao_exata_processada'] = final_loc_data # Salvar de volta
+
+                     elif final_loc_type == "Não informada" and not final_loc_data.get('motivo_falha_geocodificacao_anterior'):
                          # Fallback reason if it's "Não informada" and no specific failure reason was captured
-                          st.session_state.denuncia_completa['localizacao_exata_processada']['motivo_falha_geocodificacao_anterior'] = "Localização exata baseada em coordenadas não obtida por nenhum método."
+                          final_loc_data['motivo_falha_geocodificacao_anterior'] = "Localização exata baseada em coordenadas não obtida por nenhum método."
+                          st.session_state.denuncia_completa['localizacao_exata_processada'] = final_loc_data # Salvar de volta
 
 
                 # Everything processed, advance to the IA analysis step
                 next_step()
 
-    st.button("Voltar", on_click=prev_step)
+    if st.button("Voltar", on_click=prev_step, key="voltar_details_location_key"):
+        pass # A ação já está no on_click
 
 
 elif st.session_state.step == 'processing_ia':
     st.header("--- 🧠 Processamento Robótico de IA ---")
-    st.write("Por favor, aguarde enquanto o Krateras analisa os dados (via texto) e gera o relatório com a inteligência do Google Gemini.")
+    st.write("Por favor, aguarde enquanto o Krateras analisa os dados e gera o relatório com a inteligência do Google Gemini.")
 
     # Access data needed for IA functions
+    # Usar .get() para segurança, embora os dados devam existir aqui
     buraco_data = st.session_state.denuncia_completa.get('buraco', {})
-    imagem_data = buraco_data.get('imagem_denuncia')
+    imagem_data_dict = buraco_data.get('imagem_denuncia') # Este é o dict {"filename": ..., "bytes": ...}
     caracteristicas = buraco_data.get('caracteristicas_estruturadas', {})
     observacoes = buraco_data.get('observacoes_adicionais', '')
 
-    if imagem_data and 'bytes' in imagem_data:
-        processar_analise_imagem(imagem_data)
-    
-        if 'nivel_severidade' in st.session_state.denuncia_completa:
-            mostrar_feedback_analise(st.session_state.denuncia_completa['nivel_severidade'])
+    # MODIFICADO: Lógica de Análise de Imagem
+    # Inicializar a chave para o resultado da análise visual no dicionário principal
+    st.session_state.denuncia_completa['resultado_analise_visual_krateras'] = None # Ou um dict de erro padrão
 
-    # Ensure IA result dicts exist in state before populating them with results
-    # Initialize with default error/unavailable messages instead of empty dicts for clarity in report if IA fails
-    if 'insights_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['insights_ia'] = {"insights": "Análise de características/observações não realizada ou com error."}
-    if 'urgencia_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['urgencia_ia'] = {"urgencia_ia": "Sugestão de urgência não gerada ou com error."}
-    if 'sugestao_acao_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['sugestao_acao_ia'] = {"sugestao_acao_ia": "Sugestões de causa/ação não geradas ou com error."}
-    if 'resumo_ia' not in st.session_state.denuncia_completa: st.session_state.denuncia_completa['resumo_ia'] = {"resumo_ia": "Resumo não gerado ou com error."}
+    if imagem_data_dict and 'bytes' in imagem_data_dict:
+        st.markdown("---")
+        st.info("👁️‍🗨️ Iniciando Análise Visual da Imagem com Krateras Image Analyzer...")
+        # `processar_analise_imagem` agora lida com sua própria UI (spinners, st.success, st.markdown para o resultado)
+        # e retorna um dicionário com os resultados ou erro.
+        resultado_analise_visual = processar_analise_imagem(imagem_data_dict) # Passa o dicionário da imagem
+        st.session_state.denuncia_completa['resultado_analise_visual_krateras'] = resultado_analise_visual
+
+        # Se a análise visual foi bem-sucedida e retornou um nível de severidade,
+        # podemos usar a função `mostrar_feedback_analise`.
+        # A exibição principal da análise visual já foi feita por `processar_analise_imagem`.
+        if resultado_analise_visual and resultado_analise_visual.get("status") != "error" and "nivel_severidade" in resultado_analise_visual:
+            st.markdown("---")
+            st.subheader("Feedback Adicional (Baseado na Análise Visual)")
+            mostrar_feedback_analise(resultado_analise_visual["nivel_severidade"])
+        elif resultado_analise_visual and resultado_analise_visual.get("status") == "error":
+            # Erro já foi exibido por processar_analise_imagem, apenas logamos ou adicionamos nota.
+            st.caption(f"Nota: A análise visual da imagem reportou um erro (detalhes já exibidos acima).")
+        st.markdown("---")
+
+    else: # Nenhuma imagem fornecida
+        st.info("ℹ️ Nenhuma imagem fornecida, análise visual da imagem não será executada.")
+        st.session_state.denuncia_completa['resultado_analise_visual_krateras'] = {
+            "status": "skipped",
+            "analise_visual": "Nenhuma imagem fornecida para análise.",
+            "timestamp": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+        }
+    # FIM DA MODIFICAÇÃO DA ANÁLISE DE IMAGEM
+
+    # Ensure IA result dicts for TEXT AI exist in state before populating them
+    # Colocar mensagens de fallback mais informativas
+    fallback_insights = {"insights": "Análise de características/observações (IA Texto) não realizada ou com erro."}
+    fallback_urgencia = {"urgencia_ia": "Sugestão de urgência (IA Texto) não gerada ou com erro."}
+    fallback_sugestao = {"sugestao_acao_ia": "Sugestões de causa/ação (IA Texto) não geradas ou com erro."}
+    fallback_resumo = {"resumo_ia": "Resumo narrativo (IA Texto) não gerado ou com erro."}
+
+    if 'insights_ia' not in st.session_state.denuncia_completa:
+        st.session_state.denuncia_completa['insights_ia'] = fallback_insights.copy()
+    if 'urgencia_ia' not in st.session_state.denuncia_completa:
+        st.session_state.denuncia_completa['urgencia_ia'] = fallback_urgencia.copy()
+    if 'sugestao_acao_ia' not in st.session_state.denuncia_completa:
+        st.session_state.denuncia_completa['sugestao_acao_ia'] = fallback_sugestao.copy()
+    if 'resumo_ia' not in st.session_state.denuncia_completa:
+        st.session_state.denuncia_completa['resumo_ia'] = fallback_resumo.copy()
 
 
-    # Use a spinner context manager for the whole processing block
-    with st.spinner("Executando análises de IA..."):
-        # Rodar análise de texto/características
-        # Passa o modelo Gemini (pode ser None). Store result directly in state inside the spinner
+    # Use a spinner context manager for the whole TEXT processing block
+    with st.spinner("Executando análises de IA (Texto)..."):
         st.session_state.denuncia_completa['insights_ia'] = analisar_caracteristicas_e_observacoes_gemini(
             caracteristicas,
             observacoes,
-            st.session_state.gemini_model
+            st.session_state.gemini_model # Passa o modelo de texto
         )
 
-        # Rodar categorização de urgência
-        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior (acessado diretamente do state)
         st.session_state.denuncia_completa['urgencia_ia'] = categorizar_urgencia_gemini(
-            st.session_state.denuncia_completa, # Passa todos os dados
-            st.session_state.denuncia_completa['insights_ia'], # Passa o resultado da análise de insights (garantido ser um dict ou fallback)
+            st.session_state.denuncia_completa,
+            st.session_state.denuncia_completa['insights_ia'],
             st.session_state.gemini_model
         )
 
-
-        # Rodar sugestão de causa e ação
-        # Passa o modelo Gemini (pode ser None) E o resultado da análise anterior (acessado diretamente do state)
         st.session_state.denuncia_completa['sugestao_acao_ia'] = sugerir_causa_e_acao_gemini(
-            st.session_state.denuncia_completa, # Passa todos os dados
-            st.session_state.denuncia_completa['insights_ia'], # Passa o resultado da análise de insights (garantido ser um dict ou fallback)
+            st.session_state.denuncia_completa,
+            st.session_state.denuncia_completa['insights_ia'],
             st.session_state.gemini_model
         )
 
-
-        # Gerar resumo completo
-        # Passa o modelo Gemini (pode ser None) E os resultados das análises anteriores (acessados diretamente do state)
-        # Note: This function is not cached
         st.session_state.denuncia_completa['resumo_ia'] = gerar_resumo_completo_gemini(
-            st.session_state.denuncia_completa, # Passa todos os dados
-            st.session_state.denuncia_completa['insights_ia'], # Passa o resultado da análise de insights (garantido ser um dict ou fallback)
-            st.session_state.denuncia_completa['urgencia_ia'], # Passa o resultado da sugestão de urgência (garantido ser um dict ou fallback)
-            st.session_state.denuncia_completa['sugestao_acao_ia'], # Passa o resultado da sugestão de causa/ação (garantido ser um dict ou fallback)
+            st.session_state.denuncia_completa,
+            st.session_state.denuncia_completa['insights_ia'],
+            st.session_state.denuncia_completa['urgencia_ia'],
+            st.session_state.denuncia_completa['sugestao_acao_ia'],
             st.session_state.gemini_model
         )
-
-        # Avança para exibir o relatório após o processamento (mesmo que algumas IAs falhem/estejam indisponíveis)
-    next_step() # Called outside the spinner, after all IA calls are attempted
+    next_step()
 
 
 elif st.session_state.step == 'show_report':
     st.header("📊 RELATÓRIO FINAL DA DENÚNCIA KRATERAS 📊")
-    st.write("✅ MISSÃO KRATERAS CONCLUÍDA! RELATÓRIO GERADO. ✅")
+    st.balloons() # Efeito visual de sucesso
+    st.success("✅ MISSÃO KRATERAS CONCLUÍDA! RELATÓRIO GERADO. ✅")
+
 
     # Access data from the state with fallbacks for safety
     dados_completos = st.session_state.denuncia_completa
@@ -1229,8 +1333,13 @@ elif st.session_state.step == 'show_report':
     endereco = buraco.get('endereco', {})
     caracteristicas = buraco.get('caracteristicas_estruturadas', {})
     observacoes = buraco.get('observacoes_adicionais', 'Nenhuma observação adicional fornecida.')
-    imagem_data = buraco.get('imagem_denuncia') # Image data
+    imagem_data_dict_report = buraco.get('imagem_denuncia') # Image data dict for report
     localizacao_exata = dados_completos.get('localizacao_exata_processada', {})
+
+    # MODIFICADO: Acessar o resultado da análise visual
+    resultado_analise_visual_report = dados_completos.get('resultado_analise_visual_krateras')
+
+    # Resultados da IA de Texto
     insights_ia = dados_completos.get('insights_ia', {})
     urgencia_ia = dados_completos.get('urgencia_ia', {})
     sugestao_acao_ia = dados_completos.get('sugestao_acao_ia', {})
@@ -1243,8 +1352,11 @@ elif st.session_state.step == 'show_report':
     # Display all steps open in expanders
     with st.expander("👤 Dados do Denunciante", expanded=True):
         st.write(f"**Nome:** {denunciante.get('nome', 'Não informado')}")
-        st.write(f"**Idade:** {denunciante.get('idade', 'Não informado')}") # Will be None if not informed
+        # Tratar 'idade' que pode ser None
+        idade_denunciante_report = denunciante.get('idade')
+        st.write(f"**Idade:** {idade_denunciante_report if idade_denunciante_report is not None else 'Não informada'}")
         st.write(f"**Cidade de Residência:** {denunciante.get('cidade_residencia', 'Não informada')}")
+
 
     with st.expander("🚧 Dados Base do Endereço do Buraco", expanded=True):
         st.write(f"**Rua:** {endereco.get('rua', 'Não informada')}")
@@ -1265,12 +1377,17 @@ elif st.session_state.step == 'show_report':
          st.write("**Características Selecionadas:**")
          if caracteristicas:
              # Display only characteristics that are not "Selecione" or None/empty list
-             caracteristicas_exibir = {k: v for k, v in caracteristicas.items() if v and v != 'Selecione' and (not isinstance(v, list) or v)}
+             caracteristicas_exibir = {k: v for k, v in caracteristicas.items() if v and v != 'Selecione' and (not isinstance(v, list) or any(item for item in v if item and item != 'Selecione'))}
+
              if caracteristicas_exibir:
                 for key, value in caracteristicas_exibir.items():
                      if isinstance(value, list):
-                         st.write(f"- **{key}:** {', '.join([item for item in value if item and item != 'Selecione'])}") # Filter here too for display
-                     else:
+                         # Filtra novamente para exibição, caso a lista contenha 'Selecione' ou vazios
+                         items_validos = [item for item in value if item and item != 'Selecione']
+                         if items_validos:
+                             st.write(f"- **{key}:** {', '.join(items_validos)}")
+                         # else: Não exibe a chave se a lista de itens válidos estiver vazia
+                     else: # Não é lista
                        st.write(f"- **{key}:** {value}")
              else:
                  st.info("Nenhuma característica estruturada significativa foi selecionada.")
@@ -1282,48 +1399,49 @@ elif st.session_state.step == 'show_report':
          st.info(observacoes if observacoes else 'Nenhuma observação adicional fornecida.')
 
     with st.expander("📍 Localização Exata Processada", expanded=True):
-        tipo_loc = localizacao_exata.get('tipo', 'Não informada')
-        st.write(f"**Tipo de Coleta:** {tipo_loc}")
+        tipo_loc_report = localizacao_exata.get('tipo', 'Não informada')
+        st.write(f"**Tipo de Coleta:** {tipo_loc_report}")
 
-        if tipo_loc in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Geocodificada (API)', 'Coordenadas Extraídas de Link (Manual)']:
-            lat = localizacao_exata.get('latitude')
-            lon = localizacao_exata.get('longitude')
 
-            if lat is not None and lon is not None:
-                 st.write(f"**Coordenadas:** `{lat}, {lon}`")
+        if tipo_loc_report in ['Coordenadas Fornecidas/Extraídas Manualmente', 'Geocodificada (API)', 'Coordenadas Extraídas de Link (Manual)']:
+            lat_report = localizacao_exata.get('latitude')
+            lon_report = localizacao_exata.get('longitude')
+
+            if lat_report is not None and lon_report is not None:
+                 st.write(f"**Coordenadas:** `{lat_report}, {lon_report}`")
 
                  st.subheader("Visualizações de Mapa")
 
                  # 1. Google Maps Embed and Link (Combined)
-                 embed_link_google = localizacao_exata.get('google_embed_link_gerado')
-                 link_maps_google = localizacao_exata.get('google_maps_link_gerado')
+                 embed_link_google_report = localizacao_exata.get('google_embed_link_gerado')
+                 link_maps_google_report = localizacao_exata.get('google_maps_link_gerado')
 
                  # Display Google Maps section only if embed link was generated (requires key & API) OR direct link exists
-                 if (embed_link_google and st.session_state.geocoding_api_key) or link_maps_google:
+                 if (embed_link_google_report and st.session_state.geocoding_api_key) or link_maps_google_report:
                      st.markdown("---")
                      st.write("**Google Maps:**")
 
-                     if embed_link_google and st.session_state.geocoding_api_key:
+                     if embed_link_google_report and st.session_state.geocoding_api_key:
                           try:
                               st.components.v1.html(
-                                  f'<iframe width="100%" height="450" frameborder="0" style="border:0" src="{embed_link_google}" allowfullscreen></iframe>',
+                                  f'<iframe width="100%" height="450" loading="lazy" referrerpolicy="no-referrer-when-downgrade" style="border:0" src="{embed_link_google_report}" allowfullscreen></iframe>',
                                   height=470, # A bit taller to include border
                                   scrolling=False
                               )
-                              st.info("ℹ️ Mapa Google Maps gerado usando a chave de Geocoding API. Requer Embed API habilitada.")
-                          except Exception as e:
-                               st.error(f"❌ Erro ao gerar mapa Google Maps incorporado: {e}")
-                     elif st.session_state.geocoding_api_key:
-                          st.warning("⚠️ Chave de Geocodificação fornecida, mas não foi possível gerar um mapa Google Maps incorporado. Verifique se a Embed API está habilitada no Google Cloud ou se a geocodificação automática falhou.")
-                     elif not st.session_state.geocoding_api_key and link_maps_google:
+                              st.caption("ℹ️ Mapa Google Maps gerado usando a chave de Geocoding API. Requer Embed API habilitada.")
+                          except Exception as e_gmap:
+                               st.error(f"❌ Erro ao gerar mapa Google Maps incorporado: {e_gmap}")
+                     elif st.session_state.geocoding_api_key and not embed_link_google_report: # Chave existe, mas link embed não
+                          st.warning("⚠️ Chave de Geocodificação fornecida, mas não foi possível gerar um mapa Google Maps incorporado (possivelmente falha na geocodificação ou Embed API desabilitada).")
+                     elif not st.session_state.geocoding_api_key and link_maps_google_report: # Sem chave, mas link direto existe
                            st.info("ℹ️ Chave de API de Geocodificação não fornecida. Mapa Google Maps incorporado indisponível, apenas link direto.")
-                     elif not st.session_state.geocoding_api_key and not link_maps_google:
+                     elif not st.session_state.geocoding_api_key and not link_maps_google_report: # Sem chave e sem link
                            st.warning("⚠️ Chave de API de Geocodificação não fornecida. Mapas Google indisponíveis.")
 
 
                      # Display the link below the embed if it exists
-                     if link_maps_google:
-                         st.write(f"[Abrir no Google Maps]({link_maps_google})")
+                     if link_maps_google_report:
+                         st.markdown(f"[Abrir no Google Maps]({link_maps_google_report})", unsafe_allow_html=True)
 
 
                  # 2. OpenStreetMap Embed and Link (Combined)
@@ -1332,132 +1450,172 @@ elif st.session_state.step == 'show_report':
 
                  # Generate the detailed OpenStreetMap embed iframe URL
                  # A reasonable delta for a small area view. Adjust zoom if needed.
-                 delta = 0.005
-                 bbox = f"{lon - delta},{lat - delta},{lon + delta},{lat + delta}"
+                 delta_osm = 0.005 # Ajuste conforme necessário para o nível de zoom inicial
+                 bbox_osm = f"{lon_report - delta_osm},{lat_report - delta_osm},{lon_report + delta_osm},{lat_report + delta_osm}"
                  # Encode bbox and marker coordinates for the URL
-                 encoded_bbox = urllib.parse.quote(bbox)
-                 encoded_marker = urllib.parse.quote(f"{lat},{lon}")
-                 osm_embed_url = f"https://www.openstreetmap.org/export/embed.html?bbox={encoded_bbox}&layer=mapnik&marker={encoded_marker}"
+                 encoded_bbox_osm = urllib.parse.quote(bbox_osm)
+                 encoded_marker_osm = urllib.parse.quote(f"{lat_report},{lon_report}")
+                 osm_embed_url_report = f"https://www.openstreetmap.org/export/embed.html?bbox={encoded_bbox_osm}&layer=mapnik&marker={encoded_marker_osm}"
 
 
                  try:
                      # Use st.components.v1.html to embed the detailed OSM map
                      st.components.v1.html(
-                         f'<iframe width="100%" height="450" frameborder="0" style="border:0" src="{osm_embed_url}" allowfullscreen></iframe>',
+                         f'<iframe width="100%" height="450" frameborder="0" style="border:0" src="{osm_embed_url_report}" allowfullscreen></iframe>',
                          height=470, # A bit taller to include border
                          scrolling=False
                      )
-                     st.info("ℹ️ Mapa OpenStreetMap detalhado incorporado (via openstreetmap.org).")
-                 except Exception as embed_error:
-                      st.error(f"❌ Erro ao gerar mapa OpenStreetMap incorporado: {embed_error}")
+                     st.caption("ℹ️ Mapa OpenStreetMap detalhado incorporado (via openstreetmap.org).")
+                 except Exception as embed_error_osm:
+                      st.error(f"❌ Erro ao gerar mapa OpenStreetMap incorporado: {embed_error_osm}")
 
 
                  # Display the direct link below the embed
-                 osm_link = f"https://www.openstreetmap.org/?mlat={lat}&mlon={lon}#map=18/{lat}/{lon}"
-                 st.write(f"[Abrir no OpenStreetMap.org]({osm_link})")
+                 osm_link_report = f"https://www.openstreetmap.org/?mlat={lat_report}&mlon={lon_report}#map=18/{lat_report}/{lon_report}" # Zoom 18
+                 st.markdown(f"[Abrir no OpenStreetMap.org]({osm_link_report})", unsafe_allow_html=True)
+
 
                  # Add the simple st.map version back as well for diversity
                  st.markdown("---")
                  st.write("**OpenStreetMap (Mapa Simplificado Streamlit):**")
                  try:
-                     map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-                     st.map(map_data, zoom=18, use_container_width=True) # Correct parameter
-                     st.info("ℹ️ Este é um mapa simplificado gerado diretamente no Streamlit usando dados OpenStreetMap.")
-                 except Exception as map_error:
-                      st.error(f"❌ Erro ao gerar visualização do mapa OpenStreetMap simplificado: {map_error}")
+                     map_data_report = pd.DataFrame({'lat': [lat_report], 'lon': [lon_report]})
+                     st.map(map_data_report, zoom=17, use_container_width=True) # Zoom 17
+                     st.caption("ℹ️ Este é um mapa simplificado gerado diretamente no Streamlit usando dados OpenStreetMap.")
+                 except Exception as map_error_st:
+                      st.error(f"❌ Erro ao gerar visualização do mapa OpenStreetMap simplificado: {map_error_st}")
 
 
                  if localizacao_exata.get('endereco_formatado_api'):
                       st.markdown("---")
                       st.write(f"**Endereço Formatado (API):** {localizacao_exata.get('endereco_formatado_api')}")
                  if localizacao_exata.get('input_original'):
-                     st.write(f"(Input Original: `{localizacao_exata.get('input_original', 'Não informado')}`)")
+                     st.write(f"(Input Original da Localização Exata: `{localizacao_exata.get('input_original', 'Não informado')}`)")
 
 
-        elif tipo_loc == 'Descrição Manual Detalhada':
+        elif tipo_loc_report == 'Descrição Manual Detalhada':
             st.write(f"**Descrição Manual:**")
             st.info(localizacao_exata.get('descricao_manual', 'Não informada'))
             if localizacao_exata.get('input_original'):
-                st.write(f"(Input Original: `{localizacao_exata.get('input_original', 'Não informado')}`)")
+                st.write(f"(Input Original da Localização Exata: `{localizacao_exata.get('input_original', 'Não informado')}`)")
+
 
         else: # Type "Não informada"
             st.warning("Localização exata não coletada de forma estruturada (coordenadas/link), nem descrição manual. O relatório dependerá da descrição e endereço base.")
 
         # Include reason for geocoding failure if applicable and not overridden by manual coords
         if localizacao_exata.get('motivo_falha_geocodificacao_anterior'):
-             st.info(f"ℹ️ Nota: Motivo da falha na geocodificação automática ou input manual sem coordenadas: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')}")
+             st.info(f"ℹ️ Nota sobre obtenção de coordenadas: {localizacao_exata.get('motivo_falha_geocodificacao_anterior')}")
 
 
     with st.expander("📷 Imagem da Denúncia (Referência Visual)", expanded=True):
-         if imagem_data and 'bytes' in imagem_data:
+         if imagem_data_dict_report and 'bytes' in imagem_data_dict_report:
               try:
-                   # Use io.BytesIO to display the image from bytes
-                   # Corrected deprecated parameter
-                   st.image(io.BytesIO(imagem_data['bytes']), caption=imagem_data.get('filename', 'Imagem Carregada'), use_container_width=True)
-                   st.write(f"**Nome do Arquivo:** {imagem_data.get('filename', 'Não informado')}")
-                   st.write(f"**Tipo:** {imagem_data.get('type', 'Não informado')}")
-                   st.info("Esta imagem é incluída no relatório para referência visual e será analisada pelo modelo Gemini Vision.")
-              except Exception as e:
-                   st.error(f"❌ Não foi possível exibir a imagem carregada: {e}")
-         elif imagem_data and 'erro' in imagem_data:
-              st.error(f"❌ Erro ao carregar a imagem: {imagem_data.get('erro', 'Detalhe desconhecido.')}")
-         else:
+                   st.image(io.BytesIO(imagem_data_dict_report['bytes']), caption=imagem_data_dict_report.get('filename', 'Imagem Carregada'), use_container_width=True)
+                   st.write(f"**Nome do Arquivo:** {imagem_data_dict_report.get('filename', 'Não informado')}")
+                   st.write(f"**Tipo:** {imagem_data_dict_report.get('type', 'Não informado')}")
+                   st.caption("Esta imagem foi incluída no relatório para referência visual.")
+              except Exception as e_img_display:
+                   st.error(f"❌ Não foi possível exibir a imagem carregada: {e_img_display}")
+         elif imagem_data_dict_report and 'erro' in imagem_data_dict_report: # Se houve erro no upload
+              st.error(f"❌ Erro ao carregar a imagem: {imagem_data_dict_report.get('erro', 'Detalhe desconhecido.')}")
+         else: # Nenhuma imagem
               st.info("ℹ️ Nenhuma imagem foi carregada para esta denúncia.")
 
-    with st.expander("🔍 Análise Visual por IA (Gemini Vision)", expanded=True):
-        if imagem_data and 'bytes' in imagem_data:
-            analise_visual = dados_completos.get('analise_visual_ia', {}).get('analise_visual', 'Análise visual não realizada ou com erro.')
-            st.write(analise_visual)
-        else:
-            st.info("ℹ️ Nenhuma imagem fornecida para análise visual.")
+    # MODIFICADO: Seção de Análise Visual
+    with st.expander("👁️‍🗨️ Resultado da Análise Visual da Imagem (Krateras Image Analyzer)", expanded=True):
+        if resultado_analise_visual_report: # Se o dicionário de resultado existe
+            status_analise_visual = resultado_analise_visual_report.get("status")
+            
+            if status_analise_visual == "success":
+                # A análise visual (texto e severidade) já foi exibida pelo image_analyzer.py
+                # durante a etapa 'processing_ia'. Aqui, apenas confirmamos.
+                st.success("✅ Análise visual da imagem foi concluída e exibida durante a etapa de processamento.")
+                
+                # Exibir informações adicionais do resultado, se desejar
+                qualidade_img_report = resultado_analise_visual_report.get("qualidade_imagem", {})
+                if qualidade_img_report and qualidade_img_report.get("status") is not None: # Checa se há dados de qualidade
+                    st.write(f"**Qualidade da Imagem Verificada:** Status: {'Boa' if qualidade_img_report.get('status') else 'Com problemas'}")
+                    if qualidade_img_report.get('problemas'):
+                        st.write(f"Problemas de qualidade identificados: {', '.join(qualidade_img_report['problemas'])}")
+                
+                analise_ia_data = resultado_analise_visual_report.get("analise_visual_ia", {})
+                timestamp_visual = analise_ia_data.get("timestamp")
+                if timestamp_visual:
+                    st.caption(f"Timestamp da análise visual (UTC): {timestamp_visual}")
+
+            elif status_analise_visual == "error":
+                st.error(f"A análise visual da imagem encontrou um erro: {resultado_analise_visual_report.get('analise_visual', 'Detalhe do erro não disponível.')}")
+                st.caption("(Esta mensagem de erro foi previamente exibida durante o processamento.)")
+            elif status_analise_visual == "skipped":
+                 st.info(f"ℹ️ Análise visual da imagem pulada: {resultado_analise_visual_report.get('analise_visual', 'Nenhuma imagem fornecida.')}")
+            else: # Caso o status não seja um dos esperados ou o dict esteja malformado
+                st.warning("⚠️ O estado da análise visual da imagem é indeterminado ou o resultado é inesperado.")
+                if not (imagem_data_dict_report and 'bytes' in imagem_data_dict_report):
+                     st.info("Verificado: Nenhuma imagem foi fornecida para esta denúncia.")
+        else: # Se resultado_analise_visual_report for None (não deveria acontecer se inicializado corretamente)
+            st.warning("⚠️ Dados da análise visual da imagem não encontrados no relatório. Isso pode indicar um problema no fluxo de processamento.")
+            if not (imagem_data_dict_report and 'bytes' in imagem_data_dict_report):
+                 st.info("Verificado: Nenhuma imagem foi fornecida para esta denúncia.")
+    # FIM DA MODIFICAÇÃO DA SEÇÃO DE ANÁLISE VISUAL
 
 
     st.markdown("---")
     st.subheader("🤖 Análises Robóticas de IA (Google Gemini Text)")
 
-    if st.session_state.gemini_model:
-        with st.expander("🧠 Análise de Características e Observações (IA Gemini)", expanded=True):
-            st.write(insights_ia.get('insights', 'Análise não realizada ou com erro.'))
+    if st.session_state.gemini_model: # Verifica se o modelo de TEXTO foi inicializado
+        with st.expander("🧠 Análise de Características e Observações (IA Gemini Text)", expanded=True):
+            st.markdown(insights_ia.get('insights', 'Análise não realizada ou com erro.')) # Usar markdown para melhor renderização
 
-        # Image analysis expander removed.
+        with st.expander("🚦 Sugestão de Urgência (IA Gemini Text)", expanded=True):
+            st.markdown(urgencia_ia.get('urgencia_ia', 'Sugestão de urgência não gerada ou com erro.'))
 
-        with st.expander("🚦 Sugestão de Urgência (IA Gemini)", expanded=True):
-            st.write(urgencia_ia.get('urgencia_ia', 'Sugestão de urgência não gerada ou com erro.'))
-
-        with st.expander("🛠️ Sugestões de Causa e Ação (IA Gemini)", expanded=True):
-            st.write(sugestao_acao_ia.get('sugestao_acao_ia', 'Sugestões não geradas ou com erro.'))
+        with st.expander("🛠️ Sugestões de Causa e Ação (IA Gemini Text)", expanded=True):
+            st.markdown(sugestao_acao_ia.get('sugestao_acao_ia', 'Sugestões não geradas ou com erro.'))
 
         st.markdown("---")
-        st.subheader("📜 Resumo Narrativo Inteligente (IA Gemini)")
-        st.write(resumo_ia.get('resumo_ia', 'Resumo não gerado ou com erro.'))
+        st.subheader("📜 Resumo Narrativo Inteligente (IA Gemini Text)")
+        st.markdown(resumo_ia.get('resumo_ia', 'Resumo não gerado ou com erro.'))
     else:
-        st.warning("⚠️ Análises e Resumo da IA não disponíveis (Chave Google API KEY não configurada ou modelo de texto não inicializado).")
+        st.warning("⚠️ Análises e Resumo da IA de Texto não disponíveis (Chave Google API KEY não configurada ou modelo de texto não inicializado).")
 
 
     st.markdown("---")
     st.write("Esperamos que este relatório ajude a consertar o buraco!")
 
     # Option to restart the process
-    if st.button("Iniciar Nova Denúncia"):
+    if st.button("Iniciar Nova Denúncia", key="nova_denuncia_report_key"):
         # Clear the session state for a fresh start (except cache_resource objects)
-        all_keys = list(st.session_state.keys())
-        for key in all_keys:
+        keys_to_delete = [key for key in st.session_state.keys() if key not in ['gemini_model', 'geocoding_api_key']] # Mantém chaves de API e modelo
+        for key in keys_to_delete:
              del st.session_state[key]
+        # Re-inicializa o passo inicial
+        st.session_state.step = 'start'
         st.rerun()
 
+
     # Option to display raw data (useful for debugging or export)
-    with st.expander("🔌 Ver Dados Brutos (JSON)"):
+    with st.expander("🔌 Ver Dados Brutos da Denúncia (JSON)"):
         # Remove image bytes to avoid polluting the raw JSON, if present
-        dados_para_json = dados_completos.copy()
+        dados_para_json = dados_completos.copy() # Trabalhar com uma cópia
+
+        # Omitir bytes da imagem principal
         if 'buraco' in dados_para_json and 'imagem_denuncia' in dados_para_json['buraco']:
-             img_data = dados_para_json['buraco']['imagem_denuncia']
-             if img_data and 'bytes' in img_data:
-                  # Create a copy and remove the 'bytes' key
-                  img_data_copy = img_data.copy()
-                  del img_data_copy['bytes']
-                  dados_para_json['buraco']['imagem_denuncia'] = img_data_copy
-                  st.info("Conteúdo da imagem (bytes) omitido do JSON bruto.")
-             # else: If imagem_denuncia exists but doesn't have 'bytes' (e.g., error), keep as is
+             img_data_main = dados_para_json['buraco'].get('imagem_denuncia')
+             if img_data_main and isinstance(img_data_main, dict) and 'bytes' in img_data_main:
+                  img_data_copy_main = img_data_main.copy()
+                  img_data_copy_main['bytes'] = f"<dados binários da imagem omitidos - {len(img_data_main['bytes'])} bytes>"
+                  dados_para_json['buraco']['imagem_denuncia'] = img_data_copy_main
+
+        # Omitir bytes da imagem na análise visual (se houver bytes lá, embora não devesse)
+        analise_visual_data_raw = dados_para_json.get('resultado_analise_visual_krateras')
+        if analise_visual_data_raw and isinstance(analise_visual_data_raw, dict):
+            # Se 'qualidade_imagem' contiver 'bytes', o que não deveria pelo código do image_analyzer.py,
+            # mas por segurança, podemos checar.
+            # O image_analyzer.py já deve retornar um dict sem os bytes da imagem crus.
+            # Apenas para garantir que o JSON não fique enorme.
+            # A estrutura retornada por image_analyzer.py já é JSON-friendly.
+            pass # Assumindo que resultado_analise_visual_krateras já é seguro para JSON
 
         st.json(dados_para_json)
 
@@ -1470,4 +1628,4 @@ if __name__ == "__main__":
     # Streamlit handles the main loop, no traditional main function needed
     # Code outside functions and at the top is executed on each rerun.
     # Flow is controlled by ifs/elifs based on st.session_state.step
-    pass # Nothing to do here beyond what's already in the main body of the script
+    pass # Nada a fazer aqui além do que já está no corpo principal do script
