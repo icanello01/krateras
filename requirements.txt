@@ -1,6 +1,7 @@
-google-adk
-streamlit
-requests
-google-generativeai
-pandas
-Pillow 
+google-adk>=0.1.0
+streamlit>=1.29.0
+requests>=2.31.0
+google-generativeai>=0.3.0
+pandas>=2.1.0
+Pillow>=10.0.0
+protobuf>=4.25.1
