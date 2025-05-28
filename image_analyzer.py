@@ -52,12 +52,12 @@ def analisar_imagem_com_gemini(image_bytes: bytes, api_key: str) -> Dict[str, An
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel('gemini-pro-vision')
         
-        # Configurações de segurança
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        # Prepara a imagem
+        image_parts = [
+            {
+                "mime_type": "image/jpeg",
+                "data": image_bytes
+            }
         ]
         
         # Prompt para análise
@@ -90,24 +90,35 @@ def analisar_imagem_com_gemini(image_bytes: bytes, api_key: str) -> Dict[str, An
         - Medidas temporárias:
         """
 
+        # Log para debug
+        st.write("🔄 Iniciando análise com Gemini Vision...")
+        
         # Gera a análise
-        response = model.generate_content([prompt, image_bytes], safety_settings=safety_settings)
+        response = model.generate_content([prompt, image_parts[0]], stream=False)
+        
+        # Log do status da resposta
+        st.write(f"📊 Status da resposta: {response.prompt_feedback}")
         
         if not response.text:
+            st.error("❌ A resposta da API não contém texto.")
             return {
                 "status": "error",
-                "analise_visual": "❌ Não foi possível gerar uma análise para esta imagem."
+                "analise_visual": "❌ Não foi possível gerar uma análise para esta imagem (resposta vazia)."
             }
 
+        # Log do sucesso
+        st.write("✅ Análise concluída com sucesso!")
+        
         return {
             "status": "success",
             "analise_visual": response.text.strip()
         }
 
     except Exception as e:
+        st.error(f"❌ Erro detalhado na análise: {str(e)}")
         return {
             "status": "error",
-            "analise_visual": f"❌ Erro na análise de imagem: {str(e)}"
+            "analise_visual": f"❌ Erro ao analisar imagem com IA: {str(e)}"
         }
 
 def extrair_nivel_severidade(analise: str) -> str:
@@ -146,6 +157,11 @@ def processar_analise_imagem(imagem_data: Dict[str, Any]) -> None:
         st.error("❌ Nenhuma imagem fornecida para análise.")
         return
 
+    # Verifica se temos a chave da API
+    if "GOOGLE_API_KEY" not in st.secrets:
+        st.error("❌ Chave da API Google (GOOGLE_API_KEY) não encontrada nos secrets.")
+        return
+        
     # Verifica qualidade da imagem
     qualidade = verificar_qualidade_imagem(imagem_data['bytes'])
     if not qualidade["status"]:
@@ -161,6 +177,9 @@ def processar_analise_imagem(imagem_data: Dict[str, Any]) -> None:
     # Análise da imagem
     with st.spinner("🔍 Analisando imagem com IA..."):
         try:
+            # Log do tamanho da imagem
+            st.write(f"📦 Tamanho da imagem: {len(imagem_data['bytes'])/1024:.2f} KB")
+            
             resultado_analise = analisar_imagem_com_gemini(
                 image_bytes=imagem_data['bytes'],
                 api_key=st.secrets["GOOGLE_API_KEY"]
@@ -189,14 +208,28 @@ def processar_analise_imagem(imagem_data: Dict[str, Any]) -> None:
                 st.markdown(resultado_analise["analise_visual"])
 
                 # Salva na sessão
+                if 'denuncia_completa' not in st.session_state:
+                    st.session_state.denuncia_completa = {}
                 st.session_state.denuncia_completa['analise_visual_ia'] = resultado_analise
                 st.session_state.denuncia_completa['nivel_severidade'] = nivel
 
             else:
                 st.error(resultado_analise["analise_visual"])
+                # Adiciona ao estado da sessão mesmo em caso de erro
+                if 'denuncia_completa' not in st.session_state:
+                    st.session_state.denuncia_completa = {}
+                st.session_state.denuncia_completa['analise_visual_ia'] = resultado_analise
 
         except Exception as e:
-            st.error(f"❌ Erro durante a análise: {str(e)}")
+            error_msg = f"❌ Erro durante a análise: {str(e)}"
+            st.error(error_msg)
+            # Registra o erro no estado da sessão
+            if 'denuncia_completa' not in st.session_state:
+                st.session_state.denuncia_completa = {}
+            st.session_state.denuncia_completa['analise_visual_ia'] = {
+                "status": "error",
+                "analise_visual": error_msg
+            }
 
 def mostrar_feedback_analise(nivel: str) -> None:
     """
