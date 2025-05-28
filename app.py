@@ -563,6 +563,57 @@ def gerar_resumo_completo_gemini(_dados_denuncia_completa: Dict[str, Any], _insi
     except Exception as e:
         return {"resumo_ia": f"❌ Erro ao gerar resumo completo com IA: {e}"}
 
+@st.cache_data(show_spinner="🔍 Analisando imagem com IA Gemini Vision...")
+def analisar_imagem_buraco(image_bytes: bytes, _model: Optional[genai.GenerativeModel]) -> Dict[str, Any]:
+    """
+    Utiliza o Gemini Vision para analisar a imagem do buraco.
+    Retorna um dicionário com o resultado ou mensagem de erro.
+    """
+    if not _model:
+        return {"analise_visual": "🤖 Análise visual via IA indisponível (Motor Gemini Vision offline)."}
+
+    try:
+        prompt = """
+        Analise esta imagem de um buraco na rua e forneça uma análise técnica detalhada.
+        
+        Forneça a análise no seguinte formato:
+        
+        DESCRIÇÃO FÍSICA:
+        - Descrição detalhada do tamanho aparente, forma e características visíveis
+        - Profundidade estimada baseada em aspectos visuais
+        - Condições do asfalto ao redor
+        
+        AVALIAÇÃO DE SEVERIDADE:
+        - Classificação: [BAIXA/MÉDIA/ALTA/CRÍTICA]
+        - Justificativa da classificação
+        
+        RISCOS IDENTIFICADOS:
+        - Liste os riscos potenciais para veículos
+        - Liste os riscos potenciais para pedestres/ciclistas
+        - Outros riscos relevantes observados
+        
+        CONDIÇÕES AGRAVANTES:
+        - Problemas adicionais visíveis (rachaduras, água, etc.)
+        - Fatores que podem piorar a situação
+        
+        RECOMENDAÇÕES:
+        - Tipo de intervenção sugerida
+        - Urgência do reparo
+        - Medidas temporárias recomendadas
+        
+        Seja preciso, técnico e detalhado na análise.
+        """
+
+        response = _model.generate_content([prompt, image_bytes], stream=False)
+        
+        if not hasattr(response, 'text'):
+            return {"analise_visual": "❌ Erro: A análise da imagem não gerou resposta válida."}
+            
+        return {"analise_visual": response.text.strip()}
+        
+    except Exception as e:
+        return {"analise_visual": f"❌ Erro ao analisar imagem com IA: {e}"}
+
 
 # --- Funções de Navegação e Renderização de UI ---
 
