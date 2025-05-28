@@ -136,8 +136,8 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
 
 # --- Inicializar APIs (Cacheado para performance) ---
 
-@st.cache_resource
-def init_gemini_text_model(api_key: Optional[str]) -> Optional[genai.GenerativeModel]:
+    @st.cache_resource
+    def init_gemini_text_model(api_key: Optional[str]) -> Tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]:
     """Inicializa o modelo Google Gemini (Texto APENAS) com cache."""
     if not api_key:
         st.error("❌ ERRO na Fábrica de Modelos: Chave de API Gemini não fornecida.")
@@ -1131,7 +1131,6 @@ elif st.session_state.step == 'collect_buraco_details_and_location':
 elif st.session_state.step == 'processing_ia':
     st.header("--- 🧠 Processamento Robótico de IA ---")
     st.write("Por favor, aguarde enquanto o Krateras analisa os dados (via texto) e gera o relatório com a inteligência do Google Gemini.")
-    st.info("ℹ️ A análise visual por IA está desativada nesta versão para otimização da estabilidade.")
 
     # Access data needed for IA functions
     buraco_data = st.session_state.denuncia_completa.get('buraco', {})
@@ -1140,11 +1139,11 @@ elif st.session_state.step == 'processing_ia':
     observacoes = buraco_data.get('observacoes_adicionais', '')
 
     if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
-    st.info("🔍 Iniciando análise visual da imagem com Gemini Vision...")
-    st.session_state.denuncia_completa['analise_visual_ia'] = analisar_imagem_buraco(
-        imagem_data['bytes'],
-        st.session_state.gemini_vision_model
-    )
+        st.info("🔍 Iniciando análise visual da imagem com Gemini Vision...")
+        st.session_state.denuncia_completa['analise_visual_ia'] = analisar_imagem_buraco(
+            imagem_data['bytes'],
+            st.session_state.gemini_vision_model
+        )
 
     # Ensure IA result dicts exist in state before populating them with results
     # Initialize with default error/unavailable messages instead of empty dicts for clarity in report if IA fails
@@ -1383,7 +1382,7 @@ elif st.session_state.step == 'show_report':
          else:
               st.info("ℹ️ Nenhuma imagem foi carregada para esta denúncia.")
 
-                 with st.expander("🔍 Análise Visual por IA (Gemini Vision)", expanded=True):
+     with st.expander("🔍 Análise Visual por IA (Gemini Vision)", expanded=True):
         if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
             analise_visual = dados_completos.get('analise_visual_ia', {}).get('analise_visual', 'Análise visual não realizada ou com erro.')
             st.write(analise_visual)
