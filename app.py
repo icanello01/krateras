@@ -136,12 +136,12 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
 
 # --- Inicializar APIs (Cacheado para performance) ---
 
-    @st.cache_resource
-    def init_gemini_text_model(api_key: Optional[str]) -> Tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]:
+@st.cache_resource
+def init_gemini_text_model(api_key: Optional[str]) -> Tuple[Optional[genai.GenerativeModel], Optional[genai.GenerativeModel]]:
     """Inicializa o modelo Google Gemini (Texto APENAS) com cache."""
     if not api_key:
         st.error("❌ ERRO na Fábrica de Modelos: Chave de API Gemini não fornecida.")
-        return None
+        return None, None
     try:
         genai.configure(api_key=api_key)
         st.success("✅ Conexão com API Google Gemini estabelecida.")
@@ -166,8 +166,11 @@ def load_api_keys() -> tuple[Optional[str], Optional[str]]:
                 st.warning(f"⚠️ AVISO: Modelos de texto Gemini preferenciais não encontrados. Usando fallback: '{text_models[0].name.replace('models/', '')}'.")
             else:
                  st.error("❌ ERRO na Fábrica de Modelos: Nenhum modelo de texto Gemini compatível encontrado na sua conta.")
-
-        return text_model_obj
+        vision_model_obj = None
+        if text_model_obj and 'gemini-pro-vision' in [m.name for m in available_models]:
+            vision_model_obj = genai.GenerativeModel('gemini-pro-vision')
+            st.success("✅ Modelo de Visão Gemini (gemini-pro-vision) inicializado com sucesso!")
+        return text_model_obj, vision_model_obj
 
     except Exception as e:
         st.error(f"❌ ERRO no Painel de Controle Gemini: Falha na inicialização dos modelos Google Gemini. Verifique sua chave e status do serviço.")
@@ -1433,7 +1436,7 @@ elif st.session_state.step == 'show_report':
          else:
               st.info("ℹ️ Nenhuma imagem foi carregada para esta denúncia.")
 
-     with st.expander("🔍 Análise Visual por IA (Gemini Vision)", expanded=True):
+    with st.expander("🔍 Análise Visual por IA (Gemini Vision)", expanded=True):
         if imagem_data and 'bytes' in imagem_data and st.session_state.gemini_vision_model:
             analise_visual = dados_completos.get('analise_visual_ia', {}).get('analise_visual', 'Análise visual não realizada ou com erro.')
             st.write(analise_visual)
