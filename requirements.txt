@@ -1,3 +1,4 @@
+google-adk
 streamlit
 requests
 google-generativeai
