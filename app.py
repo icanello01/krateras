@@ -17,6 +17,7 @@ import requests
 import google.generativeai as genai
 from datetime import datetime
 from typing import Dict, Any, Optional, Tuple
+from image_analyzer import processar_analise_imagem, mostrar_feedback_analise
 import re
 import json
 import pandas as pd
