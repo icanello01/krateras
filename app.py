@@ -175,7 +175,7 @@ def init_gemini_text_model(api_key: Optional[str]) -> Tuple[Optional[genai.Gener
     except Exception as e:
         st.error(f"❌ ERRO no Painel de Controle Gemini: Falha na inicialização dos modelos Google Gemini. Verifique sua chave e status do serviço.")
         st.exception(e)
-        return None
+        return None, None
 
 
 # --- Funções de API Call ---
